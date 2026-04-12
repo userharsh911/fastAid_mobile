@@ -12,7 +12,7 @@ export default function TabsLayout() {
             height:50
         }
     }}>
-        <Tabs.Screen name='index' options={{
+        <Tabs.Screen name='(home)' options={{
             tabBarIcon:({size,color})=><Ionicons name='home' size={size} color={color}/>
         }}/>
         <Tabs.Screen name='account' options={{

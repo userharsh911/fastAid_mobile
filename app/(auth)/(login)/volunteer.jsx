@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert } from 'react-native'
 import React, { useState } from 'react'
 import { Link, useRouter } from 'expo-router'
 import Ionicons from '@expo/vector-icons/Ionicons'
@@ -18,7 +18,7 @@ export default function Volunteer() {
         routes.replace("/(app)/(tabs)");
       }
     } catch (error) {
-      
+      Alert.alert("Error ",error?.message || "Error while logging in");
     }
   }
 

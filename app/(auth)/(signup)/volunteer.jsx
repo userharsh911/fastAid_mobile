@@ -1,6 +1,7 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, Image, Alert, KeyboardAvoidingView, Platform, TouchableNativeFeedback, TouchableWithoutFeedback, Keyboard } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, Image, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native'
 import React, { useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
+import * as Location from 'expo-location'
 import IonIcons from "@expo/vector-icons/Ionicons"
 import { Link, useRouter } from 'expo-router'
 import useVolunteerBear from '../../../store/volunteer.store'
@@ -13,6 +14,7 @@ export default function Volunteer() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false);
+  const [applying, setApplying] = useState(false)
   const {applyVolunteer} = useVolunteerBear(state=>state);
   const routes = useRouter();
 
@@ -40,12 +42,42 @@ export default function Volunteer() {
 
   const applyHandler = async()=>{
     try {
-      const res = await applyVolunteer({email,password,phone,coordinates:[70.34343,12.23434]}) // hardcoded coordinates for android emulator
+      if (password !== confirmPassword) {
+        Alert.alert('Error', 'Passwords do not match')
+        return
+      }
+
+      setApplying(true)
+
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Location permission is required to apply as volunteer.')
+        return
+      }
+
+      const currentLocation = await Location.getCurrentPositionAsync({})
+      const latitude = currentLocation?.coords?.latitude
+      const longitude = currentLocation?.coords?.longitude
+
+      if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+        Alert.alert('Location error', 'Unable to fetch your location right now.')
+        return
+      }
+
+      const res = await applyVolunteer({
+        email,
+        password,
+        phone,
+        coordinates: [longitude, latitude],
+      })
+
       if(res.success){
         routes.replace("/(app)/(tabs)");
       }
     } catch (error) {
-      
+      Alert.alert("Error ",error?.message || "Error while applying");
+    } finally {
+      setApplying(false)
     }
   }
 
@@ -196,10 +228,11 @@ export default function Volunteer() {
             <TouchableOpacity
               className="bg-red-600 py-4 items-center mb-4"
               activeOpacity={0.85}
+              disabled={applying}
               onPress={applyHandler}
             >
               <Text className="text-white font-black text-sm tracking-widest uppercase">
-                Submit Application
+                {applying ? 'Submitting...' : 'Submit Application'}
               </Text>
             </TouchableOpacity>
 

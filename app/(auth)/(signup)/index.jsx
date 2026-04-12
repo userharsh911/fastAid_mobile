@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, KeyboardAvoidingView, Platform, TouchableNativeFeedback, Keyboard, TouchableWithoutFeedback } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, KeyboardAvoidingView, Platform, TouchableNativeFeedback, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native'
 import React, { useState } from 'react'
 import { Link, useRouter } from 'expo-router'
 import useUserBear from '../../../store/user.store'
@@ -21,7 +21,7 @@ export default function Index() {
         routes.replace('/(app)/(tabs)');
       }
     } catch (error) {
-      
+      Alert.alert("Error ",error?.message || "Error while signing up");
     }
   }
 

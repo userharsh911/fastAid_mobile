@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert } from 'react-native'
 import React, { useState } from 'react'
 import { Link, useRouter, useSegments } from 'expo-router'
 import useUserBear from "../../../store/user.store"
@@ -24,7 +24,7 @@ export default function Index() {
         console.log(segments)
       }
     } catch (error) {
-      
+      Alert.alert("Error ",error.message)
     }
   }
 
@@ -36,7 +36,8 @@ export default function Index() {
         routes.replace('/(app)/(tabs)')
       }
     } catch (error) {
-      
+      console.log("err ",error)
+      Alert.alert("Error ",error?.message || "Error while logging in")
     }
   }
 

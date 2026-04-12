@@ -15,6 +15,7 @@ const useVolunteerBear = create((set)=>({
             return response.data;
         } catch (error) {
             console.log("error while applying as volunteer ",error);
+            throw error.response?.data;
         }
     },
     loginVolunteer:async(data)=>{
@@ -26,6 +27,7 @@ const useVolunteerBear = create((set)=>({
             return response.data;
         } catch (error) {
             console.log("error while logging as volunteer ",error);
+            throw error.response?.data;
         }
     },
     getVolunteer:async()=>{
@@ -43,13 +45,32 @@ const useVolunteerBear = create((set)=>({
             set({volunteerLoader:false});
         }
     },
+    saveVolunteerPushToken: async(pushToken)=>{
+        try {
+            if(!pushToken) return {success:false};
+
+            const volunteerToken = await SecureStore.getItemAsync("volunteerToken");
+            if(!volunteerToken) return {success:false};
+
+            await volunteerInstance.post(`/save-token/${volunteerToken}`,{token:pushToken});
+
+            set((state)=>({
+                volunteer:state.volunteer ? {...state.volunteer, push_token:pushToken} : state.volunteer
+            }));
+
+            return {success:true};
+        } catch (error) {
+            console.log("error while saving volunteer push token ",error);
+            throw error.response?.data || error;
+        }
+    },
     logoutVolunteer:async()=>{
         try {
             await SecureStore.deleteItemAsync("volunteerToken");
             set({volunteer:null});
             set({volunteerToken:null});
         } catch (error) {
-            
+            throw error.response?.data;
         }
     }
 }))
