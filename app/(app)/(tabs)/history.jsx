@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Animated, useColorScheme } from 'react-native'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'expo-router'
 import useUserBear from '../../../store/user.store'
 import useVolunteerBear from '../../../store/volunteer.store'
@@ -117,6 +117,79 @@ const getAgeMeta = (alertItem) => {
   }
 }
 
+const hasVolunteerResponded = (alertItem, volunteerId) => {
+  if (!volunteerId || !Array.isArray(alertItem?.volunteers)) return false
+
+  return alertItem.volunteers.some((id) => String(id) === String(volunteerId))
+}
+
+const getVolunteerInvolvementMeta = (alertItem, volunteerId, isDarkMode) => {
+  const assignedToMeFromServer = Boolean(alertItem?.involvement?.assignedToMe)
+  const respondedByMeFromServer = Boolean(alertItem?.involvement?.respondedByMe)
+  const assignedVolunteerId = alertItem?.volunteer_id?._id || alertItem?.volunteer_id
+
+  const assignedToMe = assignedToMeFromServer || String(assignedVolunteerId) === String(volunteerId)
+  const respondedByMe = respondedByMeFromServer || hasVolunteerResponded(alertItem, volunteerId)
+
+  if (assignedToMe && alertItem?.mode === 'Alloted') {
+    return {
+      label: 'Assigned To You',
+      textColor: isDarkMode ? '#93c5fd' : '#1d4ed8',
+      backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe',
+      assignedToMe,
+      respondedByMe,
+    }
+  }
+
+  if (assignedToMe && alertItem?.mode === 'End') {
+    return {
+      label: 'Completed By You',
+      textColor: isDarkMode ? '#86efac' : '#15803d',
+      backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : '#dcfce7',
+      assignedToMe,
+      respondedByMe,
+    }
+  }
+
+  if (assignedToMe && alertItem?.mode === 'Cancelled') {
+    return {
+      label: 'Cancelled Assignment',
+      textColor: isDarkMode ? '#fca5a5' : '#b91c1c',
+      backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2',
+      assignedToMe,
+      respondedByMe,
+    }
+  }
+
+  if (assignedToMe) {
+    return {
+      label: 'Assigned',
+      textColor: isDarkMode ? '#93c5fd' : '#1d4ed8',
+      backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe',
+      assignedToMe,
+      respondedByMe,
+    }
+  }
+
+  if (respondedByMe) {
+    return {
+      label: 'Responded',
+      textColor: isDarkMode ? '#fcd34d' : '#b45309',
+      backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7',
+      assignedToMe,
+      respondedByMe,
+    }
+  }
+
+  return {
+    label: 'Nearby',
+    textColor: isDarkMode ? '#cbd5e1' : '#374151',
+    backgroundColor: isDarkMode ? 'rgba(148, 163, 184, 0.2)' : '#f3f4f6',
+    assignedToMe,
+    respondedByMe,
+  }
+}
+
 export default function History() {
   const routes = useRouter()
   const [trackingAlertId, setTrackingAlertId] = useState(null)
@@ -130,7 +203,12 @@ export default function History() {
     fetchAlertStatus,
   } = useUserBear((state) => state)
 
-  const { volunteer } = useVolunteerBear((state) => state)
+  const {
+    volunteer,
+    volunteerHistory,
+    volunteerHistoryLoader,
+    getVolunteerAlertHistory,
+  } = useVolunteerBear((state) => state)
 
   const { themePreference } = useThemeBear((state) => state)
   const systemColorScheme = useColorScheme()
@@ -154,6 +232,32 @@ export default function History() {
   }
 
   const isInitialHistoryLoading = alertHistoryLoader && (alertHistory?.length || 0) === 0
+  const isInitialVolunteerHistoryLoading = volunteerHistoryLoader && (volunteerHistory?.length || 0) === 0
+
+  const volunteerSummary = useMemo(() => {
+    const summary = {
+      total: 0,
+      assigned: 0,
+      responded: 0,
+      completed: 0,
+      active: 0,
+    }
+
+    if (!volunteer?._id) return summary
+
+    summary.total = volunteerHistory?.length || 0
+
+    ;(volunteerHistory || []).forEach((alertItem) => {
+      const involvementMeta = getVolunteerInvolvementMeta(alertItem, volunteer?._id, isDarkMode)
+
+      if (involvementMeta.assignedToMe) summary.assigned += 1
+      if (involvementMeta.respondedByMe) summary.responded += 1
+      if (alertItem?.mode === 'End' && (involvementMeta.assignedToMe || involvementMeta.respondedByMe)) summary.completed += 1
+      if (alertItem?.mode === 'Active' || alertItem?.mode === 'Alloted') summary.active += 1
+    })
+
+    return summary
+  }, [volunteer?._id, volunteerHistory, isDarkMode])
 
   useEffect(() => {
     if (!user?._id || volunteer?._id) return
@@ -166,8 +270,24 @@ export default function History() {
     getAlertHistory(shouldShowSkeleton).catch(() => {})
   }, [user?._id, volunteer?._id, getAlertHistory, alertHistory?.length])
 
+  useEffect(() => {
+    if (!volunteer?._id) return
+
+    const historyInitKey = `${volunteer?._id}:volunteer-history`
+    if (historyInitKeyRef.current === historyInitKey) return
+    historyInitKeyRef.current = historyInitKey
+
+    const shouldShowSkeleton = (volunteerHistory?.length || 0) === 0
+    getVolunteerAlertHistory(shouldShowSkeleton).catch(() => {})
+  }, [volunteer?._id, getVolunteerAlertHistory, volunteerHistory?.length])
+
   const refreshHistory = async () => {
     try {
+      if (volunteer?._id) {
+        await getVolunteerAlertHistory(true)
+        return
+      }
+
       await getAlertHistory(true)
     } catch (error) {
       console.log('error while refreshing history ', error)
@@ -192,9 +312,93 @@ export default function History() {
 
   if (volunteer?._id) {
     return (
-      <View className='flex-1 px-6 justify-center' style={{ backgroundColor: colors.page }}>
-        <Text className='text-3xl font-black' style={{ color: colors.text }}>History</Text>
-        <Text className='text-sm mt-3' style={{ color: colors.textSoft }}>Alert history tab is available for users only.</Text>
+      <View className='flex-1' style={{ backgroundColor: colors.page }}>
+        <View className='absolute top-0 left-0 right-0 h-1 z-10' style={{ backgroundColor: colors.accent }} />
+        <View style={{ position: 'absolute', top: -30, right: -24, width: 150, height: 150, borderRadius: 999, backgroundColor: isDarkMode ? '#1e293b' : '#fee2e2' }} />
+
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 52 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View className='mb-6 border rounded-2xl p-5' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+            <Text className='text-3xl font-black tracking-tight' style={{ color: colors.text }}>Volunteer Activity</Text>
+            <Text className='text-xs mt-2 font-medium tracking-widest uppercase' style={{ color: colors.textSoft }}>All alerts where you responded or got assigned</Text>
+            <View className='self-start mt-3 border px-3 py-2 rounded-full' style={{ backgroundColor: colors.accentSoftBg, borderColor: colors.accentSoftBorder }}>
+              <Text className='text-[11px] font-black tracking-widest uppercase' style={{ color: colors.accent }}>Response Timeline</Text>
+            </View>
+          </View>
+
+          <View className='flex-row gap-3 mb-5'>
+            <View className='flex-1 border rounded-2xl p-3' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <Text className='text-[11px] font-bold tracking-widest uppercase' style={{ color: colors.textSoft }}>Total Alerts</Text>
+              <Text className='text-2xl font-black mt-1' style={{ color: colors.text }}>{volunteerSummary.total}</Text>
+            </View>
+            <View className='flex-1 border rounded-2xl p-3' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <Text className='text-[11px] font-bold tracking-widest uppercase' style={{ color: colors.textSoft }}>Assigned</Text>
+              <Text className='text-2xl font-black mt-1' style={{ color: colors.text }}>{volunteerSummary.assigned}</Text>
+            </View>
+          </View>
+
+          <View className='flex-row gap-3 mb-5'>
+            <View className='flex-1 border rounded-2xl p-3' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <Text className='text-[11px] font-bold tracking-widest uppercase' style={{ color: colors.textSoft }}>Responded</Text>
+              <Text className='text-2xl font-black mt-1' style={{ color: colors.text }}>{volunteerSummary.responded}</Text>
+            </View>
+            <View className='flex-1 border rounded-2xl p-3' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <Text className='text-[11px] font-bold tracking-widest uppercase' style={{ color: colors.textSoft }}>Completed</Text>
+              <Text className='text-2xl font-black mt-1' style={{ color: colors.text }}>{volunteerSummary.completed}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            className='border rounded-xl py-3 items-center mb-5'
+            style={{ borderColor: colors.accent, backgroundColor: colors.neutralSurface }}
+            activeOpacity={0.85}
+            disabled={volunteerHistoryLoader}
+            onPress={refreshHistory}
+          >
+            <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.accent }}>
+              {volunteerHistoryLoader ? 'Refreshing...' : 'Refresh Activity'}
+            </Text>
+          </TouchableOpacity>
+
+          {isInitialVolunteerHistoryLoading ? <HistorySkeleton colors={colors} isDarkMode={isDarkMode} /> : null}
+
+          {!isInitialVolunteerHistoryLoading && (volunteerHistory?.length || 0) === 0 ? (
+            <View className='border rounded-2xl p-5' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <Text className='text-sm' style={{ color: colors.textMuted }}>You have not responded to any alerts yet.</Text>
+            </View>
+          ) : (
+            volunteerHistory.map((alertItem, index) => {
+              const status = getStatusStyle(alertItem?.mode, isDarkMode)
+              const involvementMeta = getVolunteerInvolvementMeta(alertItem, volunteer?._id, isDarkMode)
+              const userInfo = alertItem?.user_id
+
+              return (
+                <View key={alertItem?._id || String(index)} className='border rounded-2xl p-4 mb-4' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <View className='flex-row items-center justify-between'>
+                    <Text className='text-lg font-black' style={{ color: colors.text }}>Alert #{index + 1}</Text>
+                    <View className='px-3 py-1 rounded-full' style={{ backgroundColor: status.backgroundColor }}>
+                      <Text className='text-xs font-black uppercase' style={{ color: status.textColor }}>{status.label}</Text>
+                    </View>
+                  </View>
+
+                  <Text className='text-xs mt-1' style={{ color: colors.textSoft }}>ID: {alertItem?._id}</Text>
+                  <Text className='text-sm mt-2' style={{ color: colors.textMuted }}>User: {userInfo?.fullname || userInfo?.email || 'Unknown'}</Text>
+                  <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Phone: {userInfo?.phone || 'N/A'}</Text>
+                  <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Description: {alertItem?.description || 'N/A'}</Text>
+                  <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Created At: {formatDateTime(alertItem?.createdAt)}</Text>
+
+                  <View className='self-start mt-3 px-3 py-1 rounded-full' style={{ backgroundColor: involvementMeta.backgroundColor }}>
+                    <Text className='text-[11px] font-black uppercase' style={{ color: involvementMeta.textColor }}>{involvementMeta.label}</Text>
+                  </View>
+                </View>
+              )
+            })
+          )}
+        </ScrollView>
+
+        <View className='absolute bottom-0 left-0 right-0 h-1' style={{ backgroundColor: colors.accent }} />
       </View>
     )
   }

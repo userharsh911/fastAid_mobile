@@ -19,6 +19,7 @@ export default function AuthLayout() {
     const tabShadowColor = isDarkMode ? '#000000' : '#111827'
     const sceneBackgroundColor = isDarkMode ? '#0b1220' : '#f8fafc'
 
+    // eslint-disable-next-line react/display-name
     const buildTabIcon = (iconName) => ({ size, color, focused }) => (
         <View
             style={{
@@ -27,9 +28,6 @@ export default function AuthLayout() {
                 borderRadius: 10,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: focused
-                    ? (isDarkMode ? 'rgba(248, 113, 113, 0.25)' : 'rgba(220, 38, 38, 0.12)')
-                    : 'transparent',
             }}
         >
             <Ionicons size={focused ? size + 1 : size} color={color} name={iconName} />

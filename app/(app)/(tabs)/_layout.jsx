@@ -20,6 +20,7 @@ export default function TabsLayout() {
     const activeTintColor = isDarkMode ? '#f87171' : '#dc2626'
     const inactiveTintColor = isDarkMode ? '#6b7280' : '#9ca3af'
 
+    // eslint-disable-next-line react/display-name
     const buildTabIcon = (iconName) => ({ size, color, focused }) => (
         <View
             style={{
@@ -28,9 +29,7 @@ export default function TabsLayout() {
                 borderRadius: 12,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: focused
-                    ? (isDarkMode ? 'rgba(248, 113, 113, 0.25)' : 'rgba(220, 38, 38, 0.12)')
-                    : 'transparent',
+                
             }}
         >
             <Ionicons name={iconName} size={focused ? size + 1 : size} color={color} />
@@ -90,9 +89,8 @@ export default function TabsLayout() {
             <Tabs.Screen
                 name='history'
                 options={{
-                    href: volunteer ? null : '/history',
-                    title: 'History',
-                    tabBarLabel: 'History',
+                    title: volunteer ? 'Activity' : 'History',
+                    tabBarLabel: volunteer ? 'Activity' : 'History',
                     lazy: false,
                     tabBarIcon: buildTabIcon('time'),
                 }}

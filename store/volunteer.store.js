@@ -32,6 +32,8 @@ const useVolunteerBear = create((set, get)=>({
     volunteerLoader:true,
     volunteerAlerts:[],
     volunteerAlertsLoader:false,
+    volunteerHistory:[],
+    volunteerHistoryLoader:false,
     applyVolunteer: async(data)=>{
         try {
             const response = await volunteerInstance.post('/auth/apply',data);
@@ -178,6 +180,30 @@ const useVolunteerBear = create((set, get)=>({
             }
         }
     },
+    getVolunteerAlertHistory: async(showLoader = true)=>{
+        try {
+            if(showLoader){
+                set({volunteerHistoryLoader:true});
+            }
+
+            const volunteerToken = await SecureStore.getItemAsync("volunteerToken");
+            if(!volunteerToken){
+                set({volunteerHistory:[]});
+                return {success:false};
+            }
+
+            const response = await userInstance.post(`/alert/volunteer/history/${volunteerToken}`);
+            set({volunteerHistory:response.data?.alerts || []});
+            return response.data;
+        } catch (error) {
+            console.log("error while getting volunteer alert history ",error);
+            throw error.response?.data || error;
+        } finally{
+            if(showLoader){
+                set({volunteerHistoryLoader:false});
+            }
+        }
+    },
     respondToAlert: async(alertId)=>{
         try {
             const volunteerToken = await SecureStore.getItemAsync("volunteerToken");
@@ -242,7 +268,7 @@ const useVolunteerBear = create((set, get)=>({
     logoutVolunteer:async()=>{
         try {
             await SecureStore.deleteItemAsync("volunteerToken");
-            set({volunteer:null, volunteerToken:null, volunteerAlerts:[]});
+            set({volunteer:null, volunteerToken:null, volunteerAlerts:[], volunteerHistory:[]});
         } catch (error) {
             throw error.response?.data;
         }

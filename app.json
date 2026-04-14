@@ -18,9 +18,18 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDxZKKorOWkdXg-nBJ4A5UJ0a0UYWDLyPI"
+        }
+      },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.userharsh911.mobile"
     },
     "androidNavigationBar": {
       "backgroundColor": "#ffffff",
@@ -50,6 +59,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "da9bec93-cad9-42eb-93f2-d1177286b8a1"
+      }
+    },
+    "owner": "userharsh911"
   }
 }

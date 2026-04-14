@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, Alert, ScrollView, TextInput, StatusBar, useColorScheme } from 'react-native'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import Constants from 'expo-constants'
 import * as Location from 'expo-location'
 import MapView, { Circle, Marker } from 'react-native-maps'
 import useUserBear from "../../../store/user.store"
@@ -187,6 +188,11 @@ export default function Account() {
   }, [volunteer?._id, volunteer?.fullname, volunteer?.phone, volunteerLatitude, volunteerLongitude, initializeFromVolunteerLocation, fetchCurrentLocationPin])
 
   const openLocationEditor = async () => {
+    if (!hasGoogleMapsApiKey) {
+      Alert.alert('Map setup required', 'Google Maps API key missing in this build. Add expo.android.config.googleMaps.apiKey in app.json and rebuild your Android dev app.')
+      return
+    }
+
     setEditingLocation(true)
 
     const hasVolunteerCoordinates = Number.isFinite(volunteerLatitude) && Number.isFinite(volunteerLongitude)
@@ -334,6 +340,23 @@ export default function Account() {
   }
 
   const resolvedThemeLabel = resolvedTheme === 'dark' ? 'Dark' : 'Light'
+  const googleMapsApiKey = Constants?.expoConfig?.android?.config?.googleMaps?.apiKey
+  const normalizedGoogleMapsApiKey = typeof googleMapsApiKey === 'string' ? googleMapsApiKey.trim() : ''
+  const hasGoogleMapsApiKey = normalizedGoogleMapsApiKey.length > 0 && !normalizedGoogleMapsApiKey.startsWith('REPLACE_WITH_')
+
+  const mapKeyMissingCard = (
+    <View
+      className='border rounded-xl py-5 px-4 items-start'
+      style={{ borderColor: isDarkMode ? '#7f1d1d' : '#fecaca', backgroundColor: isDarkMode ? 'rgba(127, 29, 29, 0.28)' : '#fff1f2' }}
+    >
+      <Text className='text-xs font-bold tracking-widest uppercase' style={{ color: isDarkMode ? '#fecaca' : '#b91c1c' }}>
+        Map setup required
+      </Text>
+      <Text className='text-xs mt-2 leading-5' style={{ color: isDarkMode ? '#fecaca' : '#991b1b' }}>
+        Google Maps API key missing in this build. Add it in app.json at expo.android.config.googleMaps.apiKey, then rebuild your Android dev app.
+      </Text>
+    </View>
+  )
 
   const themeSelectorCard = (
     <View
@@ -460,7 +483,9 @@ export default function Account() {
                   <Text className='text-xs mb-2' style={{ color: softTextColor }}>Current availability location preview (500m area)</Text>
 
                   {
-                    savedVolunteerCoordinates ? (
+                    !hasGoogleMapsApiKey ? (
+                      mapKeyMissingCard
+                    ) : savedVolunteerCoordinates ? (
                       <MapView
                         style={{ width: '100%', height: 200 }}
                         region={previewRegion}
@@ -507,6 +532,8 @@ export default function Account() {
                     <View className='py-8 items-center'>
                       <EmergencyLoader size='small' label='Loading location editor' />
                     </View>
+                  ) : !hasGoogleMapsApiKey ? (
+                    mapKeyMissingCard
                   ) : (
                     <MapView
                       ref={editMapRef}

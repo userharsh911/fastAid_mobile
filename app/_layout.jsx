@@ -67,6 +67,12 @@ export default function RootLayout() {
       if (!volunteer?._id) return;
 
       try {
+        const isExpoGo = Constants?.appOwnership === "expo";
+        if (isExpoGo) {
+          console.log("Push token registration skipped: Expo Go does not support remote push notifications on SDK 53+.");
+          return;
+        }
+
         if (Platform.OS === "android") {
           await Notifications.setNotificationChannelAsync("default", {
             name: "default",
@@ -85,12 +91,25 @@ export default function RootLayout() {
 
         if (finalStatus !== "granted") return;
 
-        const projectId =
-          Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+        const hasAndroidGoogleServicesConfig =
+          Platform.OS !== "android" || Boolean(Constants?.expoConfig?.android?.googleServicesFile);
 
-        const tokenResponse = projectId
-          ? await Notifications.getExpoPushTokenAsync({ projectId })
-          : await Notifications.getExpoPushTokenAsync();
+        if (!hasAndroidGoogleServicesConfig) {
+          console.log("Push token registration skipped: Android FCM is not configured (google-services.json missing). Remote push notifications are disabled until FCM setup is complete.");
+          return;
+        }
+
+        const projectId =
+          Constants?.expoConfig?.extra?.eas?.projectId
+          ?? Constants?.easConfig?.projectId
+          ?? (typeof process !== "undefined" ? process?.env?.EXPO_PUBLIC_EAS_PROJECT_ID : undefined);
+
+        if (!projectId) {
+          console.log("Push token registration skipped: EAS projectId is missing. Run 'eas project:init' or add expo.extra.eas.projectId in app config.");
+          return;
+        }
+
+        const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
 
         if (tokenResponse?.data) {
           await saveVolunteerPushToken(tokenResponse.data);
