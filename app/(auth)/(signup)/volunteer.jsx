@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, Image, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, Image, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ActivityIndicator, useColorScheme } from 'react-native'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import * as Location from 'expo-location'
@@ -7,6 +7,7 @@ import IonIcons from "@expo/vector-icons/Ionicons"
 import { Link } from 'expo-router'
 import useVolunteerBear from '../../../store/volunteer.store'
 import EmergencyLoader from '../../../components/common/EmergencyLoader'
+import useThemeBear from '../../../store/theme.store'
 
 export default function Volunteer() {
   const [image, setImage] = useState(null)
@@ -23,6 +24,29 @@ export default function Volunteer() {
   const signupMapRef = useRef(null)
   const [mapLoader, setMapLoader] = useState(true)
   const [refreshingCurrentLocation, setRefreshingCurrentLocation] = useState(false)
+  const { themePreference } = useThemeBear((state) => state)
+  const systemColorScheme = useColorScheme()
+
+  const resolvedTheme = themePreference === 'system'
+    ? (systemColorScheme === 'dark' ? 'dark' : 'light')
+    : themePreference
+  const isDarkMode = resolvedTheme === 'dark'
+
+  const colors = {
+    page: isDarkMode ? '#0b1220' : '#f8fafc',
+    surface: isDarkMode ? '#111827' : '#ffffff',
+    border: isDarkMode ? '#263244' : '#e5e7eb',
+    text: isDarkMode ? '#f8fafc' : '#111827',
+    textMuted: isDarkMode ? '#cbd5e1' : '#4b5563',
+    textSoft: isDarkMode ? '#94a3b8' : '#6b7280',
+    accent: isDarkMode ? '#f87171' : '#dc2626',
+    accentSoftBg: isDarkMode ? 'rgba(248, 113, 113, 0.18)' : '#fee2e2',
+    accentSoftBorder: isDarkMode ? 'rgba(248, 113, 113, 0.35)' : '#fecaca',
+    inputBg: isDarkMode ? '#0f172a' : '#ffffff',
+    inputBorder: isDarkMode ? '#334155' : '#d1d5db',
+    placeholder: isDarkMode ? '#64748b' : '#9ca3af',
+    disabledPrimary: isDarkMode ? '#475569' : '#fca5a5',
+  }
   const {applyVolunteer} = useVolunteerBear(state=>state);
 
   const setMapPin = useCallback((latitude, longitude, keepZoom = true, recenterMap = false) => {
@@ -105,6 +129,8 @@ export default function Volunteer() {
   };
 
   const applyHandler = async()=>{
+    if (applying) return
+
     try {
       if (!fullname.trim() || !email.trim() || !phone.trim() || !password) {
         Alert.alert('Missing fields', 'Please fill all required fields')
@@ -142,14 +168,13 @@ export default function Volunteer() {
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-
-      {/* Top accent bar */}
-      <View className="absolute top-0 left-0 right-0 h-1 bg-red-600 z-10" />
+    <View className='flex-1' style={{ backgroundColor: colors.page }}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={colors.page} />
+      <View className='absolute top-0 left-0 right-0 h-1 z-10' style={{ backgroundColor: colors.accent }} />
+      <View style={{ position: 'absolute', top: -40, right: -24, width: 170, height: 170, borderRadius: 999, backgroundColor: isDarkMode ? '#1e293b' : '#fee2e2' }} />
 
       <KeyboardAvoidingView
-        className="flex-1"
+        className='flex-1'
         behavior={Platform.OS==='ios' ? 'padding' : 'height'}
       >
         <TouchableWithoutFeedback
@@ -158,166 +183,172 @@ export default function Volunteer() {
           <ScrollView
             contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingVertical: 52 }}
             showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps='handled'
           >
-            {/* Header */}
-            <View className="mb-10">
-              <View className="w-10 h-10 bg-red-600 rounded-sm mb-6" />
-              <Text className="text-4xl font-black text-black tracking-tight leading-none">
+            <View className='mb-6 border rounded-2xl p-5' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <Text className='text-4xl font-black tracking-tight leading-none' style={{ color: colors.text }}>
                 Become a{'\n'}Volunteer.
               </Text>
-              <Text className="text-xs text-gray-400 mt-3 font-medium tracking-widest uppercase">
+              <Text className='text-xs mt-3 font-medium tracking-widest uppercase' style={{ color: colors.textSoft }}>
                 Fill in your details to apply
               </Text>
+              <View className='self-start mt-4 border px-3 py-2 rounded-full' style={{ backgroundColor: colors.accentSoftBg, borderColor: colors.accentSoftBorder }}>
+                <Text className='text-[11px] font-black tracking-widest uppercase' style={{ color: colors.accent }}>Volunteer Onboarding</Text>
+              </View>
             </View>
 
-            {/* Image Picker */}
-            <View className="items-center mb-10">
-              <TouchableOpacity onPress={pickImage} activeOpacity={0.85} >
+            <View className='border rounded-2xl p-5 mb-5 items-center' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <TouchableOpacity onPress={pickImage} activeOpacity={0.85}>
                 {
                   image ? (
-                    <View className="">
+                    <View>
                     <Image
                       source={{ uri: image }}
-                      className="w-24 h-24 rounded-sm"
-                      style={{ borderWidth: 3, borderColor: '#dc2626' }}
+                      className='w-24 h-24 rounded-2xl'
+                      style={{ borderWidth: 2, borderColor: colors.accent }}
                     />
-                    <View className="absolute bottom-0 right-0 bg-red-600 px-2 py-1">
-                      <Text className="text-white text-xs font-black tracking-wider">EDIT</Text>
+                    <View className='absolute -bottom-2 -right-2 rounded-lg px-2 py-1' style={{ backgroundColor: colors.accent }}>
+                      <Text className='text-white text-xs font-black tracking-wider'>EDIT</Text>
                     </View>
                   </View>
                   ) : (
                     <View
-                  className=" px-5 h-24 border-2 border-dashed border-red-400 items-center justify-center rounded-sm"
-                >
-                  <Text className="text-3xl text-red-400">+</Text>
-                  <Text className="text-xs text-red-400 font-bold tracking-widest uppercase mt-1">
-                    Add Document
-                  </Text>
-                </View>
+                      className='px-6 h-24 border-2 border-dashed items-center justify-center rounded-2xl'
+                      style={{ borderColor: colors.accentSoftBorder, backgroundColor: colors.accentSoftBg }}
+                    >
+                      <Text className='text-3xl' style={{ color: colors.accent }}>+</Text>
+                      <Text className='text-xs font-bold tracking-widest uppercase mt-1' style={{ color: colors.accent }}>
+                        Add Document
+                      </Text>
+                    </View>
                   )
                 }
-                
               </TouchableOpacity>
-
-              {/*  */}
-              
             </View>
 
-            <View className="mb-5">
-              <Text className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-2">
-                Full Name
-              </Text>
-              <TextInput
-                value={fullname}
-                onChangeText={setFullname}
-                placeholder="Enter your full name"
-                placeholderTextColor="#d1d5db"
-                className="border-b-2 border-gray-200 py-3 text-base text-black font-medium"
-              />
-            </View>
-
-            {/* Email Field */}
-            <View className="mb-5">
-              <Text className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-2">
-                Email
-              </Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor="#d1d5db"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                className="border-b-2 border-gray-200 py-3 text-base text-black font-medium"
-              />
-            </View>
-
-            {/* Phone Field */}
-            <View className="mb-5">
-              <Text className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-2">
-                Phone Number
-              </Text>
-              <TextInput
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="+91 00000 00000"
-                placeholderTextColor="#d1d5db"
-                keyboardType="phone-pad"
-                className="border-b-2 border-gray-200 py-3 text-base text-black font-medium"
-              />
-            </View>
-
-            {/* Password Field */}
-            <View className="mb-5">
-              <Text className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-2">
-                Password
-              </Text>
-              <View className="flex-row items-center border-b-2 border-gray-200">
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor="#d1d5db"
-                  secureTextEntry={!showPass}
-                  className="flex-1 py-3 text-base text-black font-medium"
-                />
-                <TouchableOpacity onPress={() => setShowPass(!showPass)} className="py-3 pl-3">
-                  <Text className="text-xs font-black text-red-600 tracking-wider">
-                    {showPass ? 'HIDE' : 'SHOW'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Confirm Password Field */}
-            <View className="mb-10">
-              <Text className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-2">
-                Confirm Password
-              </Text>
-              <View className="flex-row items-center border-b-2 border-gray-200">
-                <TextInput
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor="#d1d5db"
-                  secureTextEntry={!showConfirm}
-                  className="flex-1 py-3 text-base text-black font-medium"
-                />
-                <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} className="py-3 pl-3">
-                  <Text className="text-xs font-black text-red-600 tracking-wider">
-                    {showConfirm ? 'HIDE' : 'SHOW'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              {confirmPassword.length > 0 && password !== confirmPassword && (
-                <Text className="text-xs text-red-500 mt-2 font-medium">
-                  Passwords do not match
+            <View className='border rounded-2xl p-5 mb-5' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <View className='mb-4'>
+                <Text className='text-xs font-bold tracking-widest uppercase mb-2' style={{ color: colors.textSoft }}>
+                  Full Name
                 </Text>
-              )}
+                <View className='border rounded-xl px-3' style={{ borderColor: colors.inputBorder, backgroundColor: colors.inputBg }}>
+                  <TextInput
+                    value={fullname}
+                    onChangeText={setFullname}
+                    placeholder='Enter your full name'
+                    placeholderTextColor={colors.placeholder}
+                    className='py-3 text-base font-medium'
+                    style={{ color: colors.text }}
+                  />
+                </View>
+              </View>
+
+              <View className='mb-4'>
+                <Text className='text-xs font-bold tracking-widest uppercase mb-2' style={{ color: colors.textSoft }}>
+                  Email
+                </Text>
+                <View className='border rounded-xl px-3' style={{ borderColor: colors.inputBorder, backgroundColor: colors.inputBg }}>
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder='you@example.com'
+                    placeholderTextColor={colors.placeholder}
+                    keyboardType='email-address'
+                    autoCapitalize='none'
+                    className='py-3 text-base font-medium'
+                    style={{ color: colors.text }}
+                  />
+                </View>
+              </View>
+
+              <View className='mb-4'>
+                <Text className='text-xs font-bold tracking-widest uppercase mb-2' style={{ color: colors.textSoft }}>
+                  Phone Number
+                </Text>
+                <View className='border rounded-xl px-3' style={{ borderColor: colors.inputBorder, backgroundColor: colors.inputBg }}>
+                  <TextInput
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder='+91 00000 00000'
+                    placeholderTextColor={colors.placeholder}
+                    keyboardType='phone-pad'
+                    className='py-3 text-base font-medium'
+                    style={{ color: colors.text }}
+                  />
+                </View>
+              </View>
+
+              <View className='mb-4'>
+                <Text className='text-xs font-bold tracking-widest uppercase mb-2' style={{ color: colors.textSoft }}>
+                  Password
+                </Text>
+                <View className='flex-row items-center border rounded-xl px-3' style={{ borderColor: colors.inputBorder, backgroundColor: colors.inputBg }}>
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder='••••••••'
+                    placeholderTextColor={colors.placeholder}
+                    secureTextEntry={!showPass}
+                    className='flex-1 py-3 text-base font-medium'
+                    style={{ color: colors.text }}
+                  />
+                  <TouchableOpacity onPress={() => setShowPass(!showPass)} className='py-3 pl-3'>
+                    <Text className='text-xs font-black tracking-wider' style={{ color: colors.accent }}>
+                      {showPass ? 'HIDE' : 'SHOW'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View>
+                <Text className='text-xs font-bold tracking-widest uppercase mb-2' style={{ color: colors.textSoft }}>
+                  Confirm Password
+                </Text>
+                <View className='flex-row items-center border rounded-xl px-3' style={{ borderColor: colors.inputBorder, backgroundColor: colors.inputBg }}>
+                  <TextInput
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder='••••••••'
+                    placeholderTextColor={colors.placeholder}
+                    secureTextEntry={!showConfirm}
+                    className='flex-1 py-3 text-base font-medium'
+                    style={{ color: colors.text }}
+                  />
+                  <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} className='py-3 pl-3'>
+                    <Text className='text-xs font-black tracking-wider' style={{ color: colors.accent }}>
+                      {showConfirm ? 'HIDE' : 'SHOW'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {confirmPassword.length > 0 && password !== confirmPassword ? (
+                  <Text className='text-xs mt-2 font-medium' style={{ color: '#ef4444' }}>
+                    Passwords do not match
+                  </Text>
+                ) : null}
+              </View>
             </View>
 
-            <View className="mb-10">
-              <Text className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-2">
+            <View className='border rounded-2xl p-5 mb-5' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <Text className='text-xs font-bold tracking-widest uppercase mb-2' style={{ color: colors.textSoft }}>
                 Set Availability Location
               </Text>
-              <Text className="text-xs text-gray-500 mb-3">
+              <Text className='text-xs mb-3' style={{ color: colors.textMuted }}>
                 Pin your map location. Blue circle shows your 500m nearby coverage.
               </Text>
 
               {
                 mapLoader ? (
-                  <View className='border-2 border-gray-100 py-8 items-center'>
+                  <View className='border rounded-2xl py-8 items-center' style={{ borderColor: colors.inputBorder, backgroundColor: colors.inputBg }}>
                     <EmergencyLoader size='small' label='Loading map location' />
                   </View>
                 ) : !mapRegion ? (
-                  <View className='border-2 border-gray-100 py-8 px-4 items-center'>
-                    <Text className='text-xs text-gray-500 text-center'>
+                  <View className='border rounded-2xl py-8 px-4 items-center' style={{ borderColor: colors.inputBorder, backgroundColor: colors.inputBg }}>
+                    <Text className='text-xs text-center' style={{ color: colors.textMuted }}>
                       Location is not set yet. Tap Use My Current Location and then adjust the pin.
                     </Text>
                   </View>
                 ) : (
-                  <View className='border-2 border-gray-100'>
+                  <View className='border rounded-2xl overflow-hidden' style={{ borderColor: colors.inputBorder }}>
                     <MapView
                       ref={signupMapRef}
                       style={{ width: '100%', height: 250 }}
@@ -357,50 +388,53 @@ export default function Volunteer() {
               }
 
               <TouchableOpacity
-                className='mt-3 border-2 border-red-600 py-3 items-center'
+                className='mt-3 border rounded-xl py-3 items-center'
+                style={{ borderColor: colors.accent, backgroundColor: colors.accentSoftBg }}
                 activeOpacity={0.85}
                 disabled={refreshingCurrentLocation}
                 onPress={pickCurrentLocationForMap}
               >
-                <Text className='text-red-600 font-black text-xs tracking-widest uppercase'>
+                <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.accent }}>
                   {refreshingCurrentLocation ? 'Fetching Location...' : 'Use My Current Location'}
                 </Text>
               </TouchableOpacity>
 
               {
                 selectedCoordinates ? (
-                  <Text className='text-xs text-gray-500 mt-2'>
+                  <Text className='text-xs mt-2' style={{ color: colors.textSoft }}>
                     Lat: {selectedCoordinates.latitude.toFixed(6)} | Lng: {selectedCoordinates.longitude.toFixed(6)}
                   </Text>
                 ) : null
               }
             </View>
 
-            {/* Submit Button */}
             <TouchableOpacity
-              className="bg-red-600 py-4 items-center mb-4"
+              className='py-4 items-center mb-4 rounded-xl'
+              style={{ backgroundColor: applying ? colors.disabledPrimary : colors.accent }}
               activeOpacity={0.85}
               disabled={applying}
               onPress={applyHandler}
             >
-              <Text className="text-white font-black text-sm tracking-widest uppercase">
-                {applying ? 'Submitting...' : 'Submit Application'}
-              </Text>
+              <View className='flex-row items-center gap-2'>
+                {applying ? <ActivityIndicator color='#fff' size='small' /> : null}
+                <Text className='text-white font-black text-sm tracking-widest uppercase'>
+                  {applying ? 'Submitting...' : 'Submit Application'}
+                </Text>
+              </View>
             </TouchableOpacity>
 
-            {/* Back Link */}
-            <Link href={"../(login)/volunteer"} className="items-center mt-4">
-              <Text className="text-gray-400 text-sm font-medium tracking-wide">
-                <IonIcons size={14} name='arrow-back'/> Back to login
-              </Text>
+            <Link href='../(login)/volunteer' asChild>
+              <TouchableOpacity className='items-center mt-2' activeOpacity={0.8}>
+                <Text className='text-sm font-medium tracking-wide' style={{ color: colors.textSoft }}>
+                  <IonIcons size={14} name='arrow-back'/> Back to login
+                </Text>
+              </TouchableOpacity>
             </Link>
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-
-      {/* Bottom accent */}
-      <View className="absolute bottom-0 left-0 right-0 h-1 bg-red-600" />
+      <View className='absolute bottom-0 left-0 right-0 h-1' style={{ backgroundColor: colors.accent }} />
     </View>
   )
 }
