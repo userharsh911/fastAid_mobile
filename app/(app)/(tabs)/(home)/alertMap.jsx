@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react'
-import { View, Text, TouchableOpacity, Linking, ScrollView } from 'react-native'
+import { View, Text, TouchableOpacity, Linking, ScrollView, useColorScheme } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import MapView, { Marker } from 'react-native-maps'
 import useVolunteerBear from '../../../../store/volunteer.store'
+import useThemeBear from '../../../../store/theme.store'
 
 const getFirstParamValue = (value) => {
   if (Array.isArray(value)) return value[0]
@@ -25,6 +26,27 @@ const formatTimestamp = (value) => {
 export default function AlertMap() {
   const routes = useRouter()
   const { lat, lng, name, phone, description, alertId } = useLocalSearchParams()
+  const { themePreference } = useThemeBear((state) => state)
+  const systemColorScheme = useColorScheme()
+
+  const resolvedTheme = themePreference === 'system'
+    ? (systemColorScheme === 'dark' ? 'dark' : 'light')
+    : themePreference
+  const isDarkMode = resolvedTheme === 'dark'
+
+  const colors = {
+    page: isDarkMode ? '#0b1220' : '#f8fafc',
+    surface: isDarkMode ? '#111827' : '#ffffff',
+    border: isDarkMode ? '#263244' : '#e5e7eb',
+    text: isDarkMode ? '#f8fafc' : '#111827',
+    textMuted: isDarkMode ? '#cbd5e1' : '#4b5563',
+    textSoft: isDarkMode ? '#94a3b8' : '#6b7280',
+    accent: isDarkMode ? '#f87171' : '#dc2626',
+    accentSoftBg: isDarkMode ? 'rgba(248, 113, 113, 0.18)' : '#fee2e2',
+    accentSoftBorder: isDarkMode ? 'rgba(248, 113, 113, 0.35)' : '#fecaca',
+    neutralSurface: isDarkMode ? '#0f172a' : '#ffffff',
+    neutralBorder: isDarkMode ? '#334155' : '#d1d5db',
+  }
 
   const { volunteer, volunteerAlerts } = useVolunteerBear((state) => state)
 
@@ -87,8 +109,19 @@ export default function AlertMap() {
   }
 
   return (
-    <View className='flex-1 bg-white'>
-      <View className='absolute top-0 left-0 right-0 h-1 bg-red-600 z-10' />
+    <View className='flex-1' style={{ backgroundColor: colors.page }}>
+      <View className='absolute top-0 left-0 right-0 h-1 z-10' style={{ backgroundColor: colors.accent }} />
+      <View
+        style={{
+          position: 'absolute',
+          top: -40,
+          right: -20,
+          width: 170,
+          height: 170,
+          borderRadius: 999,
+          backgroundColor: isDarkMode ? '#1e293b' : '#fee2e2',
+        }}
+      />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 56 }}
@@ -96,31 +129,31 @@ export default function AlertMap() {
       >
 
       <View className='px-6 pt-14 pb-4'>
-        <Text className='text-3xl font-black text-black'>User Location</Text>
-        <Text className='text-xs text-gray-400 mt-2 font-medium tracking-widest uppercase'>
+        <Text className='text-3xl font-black' style={{ color: colors.text }}>User Location</Text>
+        <Text className='text-xs mt-2 font-medium tracking-widest uppercase' style={{ color: colors.textSoft }}>
           Navigate to emergency location
         </Text>
       </View>
 
       <View className='px-6'>
-        <View className='border-2 border-gray-100 p-4'>
-          <Text className='text-sm text-gray-600'>User: {resolvedName}</Text>
-          <Text className='text-sm text-gray-600 mt-1'>Phone: {resolvedPhone || 'N/A'}</Text>
-          <Text className='text-sm text-gray-600 mt-1'>Alert: {resolvedDescription || 'N/A'}</Text>
-          <Text className='text-xs text-gray-500 mt-2'>
+        <View className='border rounded-2xl p-4' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+          <Text className='text-sm' style={{ color: colors.textMuted }}>User: {resolvedName}</Text>
+          <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Phone: {resolvedPhone || 'N/A'}</Text>
+          <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Alert: {resolvedDescription || 'N/A'}</Text>
+          <Text className='text-xs mt-2' style={{ color: colors.textSoft }}>
             {liveAlert ? 'Showing latest saved location' : 'Showing last known location'}
           </Text>
           {
             locationUpdatedAt ? (
-              <Text className='text-xs text-gray-400 mt-1'>Last update: {locationUpdatedAt}</Text>
+              <Text className='text-xs mt-1' style={{ color: colors.textSoft }}>Last update: {locationUpdatedAt}</Text>
             ) : null
           }
-          <Text className='text-xs text-gray-400 mt-2'>
+          <Text className='text-xs mt-2' style={{ color: colors.textSoft }}>
             Lat: {hasCoordinates ? latitude.toFixed(6) : 'N/A'} | Lng: {hasCoordinates ? longitude.toFixed(6) : 'N/A'}
           </Text>
           {
             alertId ? (
-              <Text className='text-xs text-gray-400 mt-1'>Alert ID: {alertId}</Text>
+              <Text className='text-xs mt-1' style={{ color: colors.textSoft }}>Alert ID: {alertId}</Text>
             ) : null
           }
         </View>
@@ -130,7 +163,7 @@ export default function AlertMap() {
         {
           hasCoordinates ? (
             <MapView
-              style={{ width: '100%', height: 300 }}
+              style={{ width: '100%', height: 300, borderRadius: 16 }}
               region={mapRegion}
             >
               <Marker
@@ -140,8 +173,8 @@ export default function AlertMap() {
               />
             </MapView>
           ) : (
-            <View className='border-2 border-gray-100 py-10 px-4 items-center'>
-              <Text className='text-sm text-gray-500'>Location is not available for this alert.</Text>
+            <View className='border rounded-2xl py-10 px-4 items-center' style={{ borderColor: colors.border, backgroundColor: colors.surface }}>
+              <Text className='text-sm' style={{ color: colors.textSoft }}>Location is not available for this alert.</Text>
             </View>
           )
         }
@@ -149,15 +182,16 @@ export default function AlertMap() {
 
       <View className='px-6 mt-4 flex-row gap-3'>
         <TouchableOpacity
-          className='flex-1 border-2 border-black py-4 items-center'
+          className='flex-1 border rounded-xl py-4 items-center'
+          style={{ borderColor: colors.neutralBorder, backgroundColor: colors.neutralSurface }}
           activeOpacity={0.8}
           onPress={callUser}
         >
-          <Text className='text-black font-black text-xs tracking-widest uppercase'>Call User</Text>
+          <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.text }}>Call User</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          className='flex-1 bg-red-600 py-4 items-center'
+          className='flex-1 bg-red-600 rounded-xl py-4 items-center'
           activeOpacity={0.85}
           onPress={openDirectionsInMaps}
         >
@@ -166,16 +200,17 @@ export default function AlertMap() {
       </View>
 
       <TouchableOpacity
-        className='mx-6 mt-3 border-2 border-red-600 py-3 items-center'
+        className='mx-6 mt-3 border rounded-xl py-3 items-center'
+        style={{ borderColor: colors.accent, backgroundColor: colors.neutralSurface }}
         activeOpacity={0.85}
         onPress={() => routes.back()}
       >
-        <Text className='text-red-600 font-black text-xs tracking-widest uppercase'>Back</Text>
+        <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.accent }}>Back</Text>
       </TouchableOpacity>
 
       </ScrollView>
 
-      <View className='absolute bottom-0 left-0 right-0 h-1 bg-red-600' />
+      <View className='absolute bottom-0 left-0 right-0 h-1' style={{ backgroundColor: colors.accent }} />
     </View>
   )
 }

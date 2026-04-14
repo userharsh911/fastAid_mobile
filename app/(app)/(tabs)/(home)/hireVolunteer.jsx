@@ -1,13 +1,35 @@
-import { View, Text, TouchableOpacity, Linking, Alert, ScrollView, ActivityIndicator } from 'react-native'
+import { View, Text, TouchableOpacity, Linking, Alert, ScrollView, ActivityIndicator, useColorScheme } from 'react-native'
 import React, { useState } from 'react'
 import { useRouter } from 'expo-router'
 import MapView, { Marker } from 'react-native-maps'
 import useUserBear from '../../../../store/user.store'
+import useThemeBear from '../../../../store/theme.store'
 
 export default function HireVolunteer() {
   const routes = useRouter()
   const [completingWork, setCompletingWork] = useState(false)
   const { selectedVolunteer, latestAlert, endAlert, clearAlertState } = useUserBear(state=>state)
+  const { themePreference } = useThemeBear((state) => state)
+  const systemColorScheme = useColorScheme()
+
+  const resolvedTheme = themePreference === 'system'
+    ? (systemColorScheme === 'dark' ? 'dark' : 'light')
+    : themePreference
+  const isDarkMode = resolvedTheme === 'dark'
+
+  const colors = {
+    page: isDarkMode ? '#0b1220' : '#f8fafc',
+    surface: isDarkMode ? '#111827' : '#ffffff',
+    border: isDarkMode ? '#263244' : '#e5e7eb',
+    text: isDarkMode ? '#f8fafc' : '#111827',
+    textMuted: isDarkMode ? '#cbd5e1' : '#4b5563',
+    textSoft: isDarkMode ? '#94a3b8' : '#6b7280',
+    accent: isDarkMode ? '#f87171' : '#dc2626',
+    accentSoftBg: isDarkMode ? 'rgba(248, 113, 113, 0.18)' : '#fee2e2',
+    accentSoftBorder: isDarkMode ? 'rgba(248, 113, 113, 0.35)' : '#fecaca',
+    neutralSurface: isDarkMode ? '#0f172a' : '#ffffff',
+    neutralBorder: isDarkMode ? '#334155' : '#d1d5db',
+  }
 
   const longitude = selectedVolunteer?.location?.coordinates?.[0]
   const latitude = selectedVolunteer?.location?.coordinates?.[1]
@@ -59,11 +81,11 @@ export default function HireVolunteer() {
 
   if (!selectedVolunteer) {
     return (
-      <View className='flex-1 bg-white px-6 justify-center'>
-        <Text className='text-2xl font-black text-black'>No Volunteer Selected</Text>
-        <Text className='text-sm text-gray-500 mt-2'>Please go back and select a volunteer first.</Text>
+      <View className='flex-1 px-6 justify-center' style={{ backgroundColor: colors.page }}>
+        <Text className='text-2xl font-black' style={{ color: colors.text }}>No Volunteer Selected</Text>
+        <Text className='text-sm mt-2' style={{ color: colors.textSoft }}>Please go back and select a volunteer first.</Text>
         <TouchableOpacity
-          className='mt-6 bg-red-600 py-4 items-center'
+          className='mt-6 bg-red-600 rounded-xl py-4 items-center'
           activeOpacity={0.85}
           onPress={() => routes.replace('/(app)/(tabs)/(home)/sendedAlert')}
         >
@@ -74,8 +96,19 @@ export default function HireVolunteer() {
   }
 
   return (
-    <View className='flex-1 bg-white'>
-      <View className='absolute top-0 left-0 right-0 h-1 bg-red-600 z-10' />
+    <View className='flex-1' style={{ backgroundColor: colors.page }}>
+      <View className='absolute top-0 left-0 right-0 h-1 z-10' style={{ backgroundColor: colors.accent }} />
+      <View
+        style={{
+          position: 'absolute',
+          top: -40,
+          right: -20,
+          width: 170,
+          height: 170,
+          borderRadius: 999,
+          backgroundColor: isDarkMode ? '#1e293b' : '#fee2e2',
+        }}
+      />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 56 }}
@@ -83,18 +116,18 @@ export default function HireVolunteer() {
       >
 
       <View className='px-6 pt-14 pb-4'>
-        <Text className='text-3xl font-black text-black'>Hire Volunteer</Text>
-        <Text className='text-xs text-gray-400 mt-2 font-medium tracking-widest uppercase'>
+        <Text className='text-3xl font-black' style={{ color: colors.text }}>Hire Volunteer</Text>
+        <Text className='text-xs mt-2 font-medium tracking-widest uppercase' style={{ color: colors.textSoft }}>
           Volunteer details and live location
         </Text>
       </View>
 
       <View className='px-6'>
-        <View className='border-2 border-gray-100 p-4'>
-          <Text className='text-sm text-gray-600'>Email: {selectedVolunteer?.email || 'N/A'}</Text>
-          <Text className='text-sm text-gray-600 mt-1'>Phone: {selectedVolunteer?.phone || 'N/A'}</Text>
-          <Text className='text-sm text-gray-600 mt-1'>Mode: {selectedVolunteer?.mode || 'N/A'}</Text>
-          <Text className='text-xs text-gray-400 mt-2'>
+        <View className='border rounded-2xl p-4' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+          <Text className='text-sm' style={{ color: colors.textMuted }}>Email: {selectedVolunteer?.email || 'N/A'}</Text>
+          <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Phone: {selectedVolunteer?.phone || 'N/A'}</Text>
+          <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Mode: {selectedVolunteer?.mode || 'N/A'}</Text>
+          <Text className='text-xs mt-2' style={{ color: colors.textSoft }}>
             Lat: {hasCoordinates ? latitude.toFixed(6) : 'N/A'} | Lng: {hasCoordinates ? longitude.toFixed(6) : 'N/A'}
           </Text>
         </View>
@@ -104,7 +137,7 @@ export default function HireVolunteer() {
         {
           hasCoordinates ? (
             <MapView
-              style={{ width: '100%', height: 280 }}
+              style={{ width: '100%', height: 280, borderRadius: 16 }}
               initialRegion={{
                 latitude,
                 longitude,
@@ -119,8 +152,8 @@ export default function HireVolunteer() {
               />
             </MapView>
           ) : (
-            <View className='border-2 border-gray-100 py-10 px-4 items-center'>
-              <Text className='text-sm text-gray-500'>Location is not available for this volunteer.</Text>
+            <View className='border rounded-2xl py-10 px-4 items-center' style={{ borderColor: colors.border, backgroundColor: colors.surface }}>
+              <Text className='text-sm' style={{ color: colors.textSoft }}>Location is not available for this volunteer.</Text>
             </View>
           )
         }
@@ -128,15 +161,16 @@ export default function HireVolunteer() {
 
       <View className='px-6 mt-4 flex-row gap-3'>
         <TouchableOpacity
-          className='flex-1 border-2 border-black py-4 items-center'
+          className='flex-1 border rounded-xl py-4 items-center'
+          style={{ borderColor: colors.neutralBorder, backgroundColor: colors.neutralSurface }}
           activeOpacity={0.8}
           onPress={callVolunteerHandler}
         >
-          <Text className='text-black font-black text-xs tracking-widest uppercase'>Call Volunteer</Text>
+          <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.text }}>Call Volunteer</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          className='flex-1 bg-red-600 py-4 items-center'
+          className='flex-1 bg-red-600 rounded-xl py-4 items-center'
           activeOpacity={0.85}
           onPress={openInMapsHandler}
         >
@@ -146,7 +180,7 @@ export default function HireVolunteer() {
 
       <View className='px-6 mt-3'>
         <TouchableOpacity
-          className={`py-4 items-center ${completingWork ? 'bg-green-400' : 'bg-green-600'}`}
+          className={`py-4 items-center rounded-xl ${completingWork ? 'bg-green-400' : 'bg-green-600'}`}
           activeOpacity={0.85}
           disabled={completingWork}
           onPress={markWorkCompletedHandler}
@@ -162,7 +196,7 @@ export default function HireVolunteer() {
 
       </ScrollView>
 
-      <View className='absolute bottom-0 left-0 right-0 h-1 bg-red-600' />
+      <View className='absolute bottom-0 left-0 right-0 h-1' style={{ backgroundColor: colors.accent }} />
     </View>
   )
 }

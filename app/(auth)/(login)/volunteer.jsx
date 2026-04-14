@@ -1,6 +1,6 @@
 import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
-import { Link, useRouter } from 'expo-router'
+import { Link } from 'expo-router'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import useVolunteerBear from '../../../store/volunteer.store'
 
@@ -10,7 +10,6 @@ export default function Volunteer() {
   const [showPass, setShowPass] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false)
   const {loginVolunteer} = useVolunteerBear(state=>state);
-  const routes = useRouter()
 
   const loginHandler = async()=>{
     if (loggingIn) return
@@ -19,7 +18,7 @@ export default function Volunteer() {
       setLoggingIn(true)
       const res = await loginVolunteer({email,password});
       if(res.success){
-        routes.replace("/(app)/(tabs)");
+        console.log("volunteer login success")
       }
     } catch (error) {
       Alert.alert("Error ",error?.message || "Error while logging in");

@@ -1,6 +1,6 @@
 import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
-import { Link, useRouter, useSegments } from 'expo-router'
+import { Link } from 'expo-router'
 import useUserBear from "../../../store/user.store"
 
 export default function Index() {
@@ -9,8 +9,6 @@ export default function Index() {
   const [showPass, setShowPass] = useState(false)
   const [loggingIn, setLoggingIn] = useState(false)
   const [guestLoggingIn, setGuestLoggingIn] = useState(false)
-  const routes = useRouter()
-  const segments = useSegments()
 
   const {loginAsGuest, loginUser} = useUserBear(state=>state);
 
@@ -20,11 +18,8 @@ export default function Index() {
     try {
       setGuestLoggingIn(true)
       const res = await loginAsGuest({as_guest:true});
-      console.log("login check ",segments,res.success)
       if(res.success){
         console.log("login as guest sucess : ")
-        routes.replace('/(app)/(tabs)')
-        console.log(segments)
       }
     } catch (error) {
       Alert.alert("Error ",error.message)
@@ -41,7 +36,6 @@ export default function Index() {
       const res = await loginUser({email,password});
       if(res.success){
         console.log("login sucess : ")
-        routes.replace('/(app)/(tabs)')
       }
     } catch (error) {
       console.log("err ",error)

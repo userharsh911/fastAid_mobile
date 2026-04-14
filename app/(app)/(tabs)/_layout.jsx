@@ -1,11 +1,24 @@
-import { Platform, View } from 'react-native'
+import { Platform, View, useColorScheme } from 'react-native'
 import React from 'react'
 import { Tabs } from 'expo-router'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import useVolunteerBear from '../../../store/volunteer.store'
+import useThemeBear from '../../../store/theme.store'
 
 export default function TabsLayout() {
     const { volunteer } = useVolunteerBear(state=>state)
+    const { themePreference } = useThemeBear(state=>state)
+    const systemColorScheme = useColorScheme()
+
+    const resolvedTheme = themePreference === 'system'
+        ? (systemColorScheme === 'dark' ? 'dark' : 'light')
+        : themePreference
+    const isDarkMode = resolvedTheme === 'dark'
+
+    const tabBarBackgroundColor = isDarkMode ? '#111827' : '#ffffff'
+    const tabBarShadowColor = isDarkMode ? '#000000' : '#111827'
+    const activeTintColor = isDarkMode ? '#f87171' : '#dc2626'
+    const inactiveTintColor = isDarkMode ? '#6b7280' : '#9ca3af'
 
     const buildTabIcon = (iconName) => ({ size, color, focused }) => (
         <View
@@ -15,7 +28,9 @@ export default function TabsLayout() {
                 borderRadius: 12,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: focused ? 'rgba(220, 38, 38, 0.12)' : 'transparent',
+                backgroundColor: focused
+                    ? (isDarkMode ? 'rgba(248, 113, 113, 0.25)' : 'rgba(220, 38, 38, 0.12)')
+                    : 'transparent',
             }}
         >
             <Ionicons name={iconName} size={focused ? size + 1 : size} color={color} />
@@ -26,9 +41,13 @@ export default function TabsLayout() {
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarActiveTintColor: '#dc2626',
-                tabBarInactiveTintColor: '#9ca3af',
+                tabBarActiveTintColor: activeTintColor,
+                tabBarInactiveTintColor: inactiveTintColor,
                 tabBarHideOnKeyboard: true,
+                sceneStyle: {
+                    paddingBottom: Platform.OS === 'ios' ? 92 : 78,
+                    backgroundColor: isDarkMode ? '#0b1220' : '#f8fafc',
+                },
                 tabBarShowLabel: true,
                 tabBarLabelStyle: {
                     fontSize: 11,
@@ -47,13 +66,13 @@ export default function TabsLayout() {
                     paddingBottom: Platform.OS === 'ios' ? 24 : 10,
                     paddingHorizontal: 12,
                     marginHorizontal: 14,
-                    marginBottom: Platform.OS === 'ios' ? 16 : 10,
+                    marginBottom: Platform.OS === 'ios' ? 12 : 8,
                     borderRadius: 22,
-                    backgroundColor: '#ffffff',
+                    backgroundColor: tabBarBackgroundColor,
                     borderTopWidth: 0,
                     elevation: 10,
-                    shadowColor: '#111827',
-                    shadowOpacity: 0.08,
+                    shadowColor: tabBarShadowColor,
+                    shadowOpacity: isDarkMode ? 0.32 : 0.08,
                     shadowOffset: { width: 0, height: 6 },
                     shadowRadius: 12,
                 },

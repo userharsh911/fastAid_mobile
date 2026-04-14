@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker'
 import * as Location from 'expo-location'
 import MapView, { Circle, Marker } from 'react-native-maps'
 import IonIcons from "@expo/vector-icons/Ionicons"
-import { Link, useRouter } from 'expo-router'
+import { Link } from 'expo-router'
 import useVolunteerBear from '../../../store/volunteer.store'
 import EmergencyLoader from '../../../components/common/EmergencyLoader'
 
@@ -24,7 +24,6 @@ export default function Volunteer() {
   const [mapLoader, setMapLoader] = useState(true)
   const [refreshingCurrentLocation, setRefreshingCurrentLocation] = useState(false)
   const {applyVolunteer} = useVolunteerBear(state=>state);
-  const routes = useRouter();
 
   const setMapPin = useCallback((latitude, longitude, keepZoom = true, recenterMap = false) => {
     if (typeof latitude !== 'number' || typeof longitude !== 'number') return
@@ -133,7 +132,7 @@ export default function Volunteer() {
       })
 
       if(res.success){
-        routes.replace("/(app)/(tabs)");
+        console.log('volunteer apply success')
       }
     } catch (error) {
       Alert.alert("Error ",error?.message || "Error while applying");

@@ -1,15 +1,37 @@
-import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, ActivityIndicator, useColorScheme } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
 import useUserBear from '../../../../store/user.store'
 import VolunteerRadarSearch from '../../../../components/common/VolunteerRadarSearch'
+import useThemeBear from '../../../../store/theme.store'
 
 export default function SendedAlert() {
   const routes = useRouter()
   const [sendingAnotherAlert, setSendingAnotherAlert] = useState(false)
   const [alertActionLoading, setAlertActionLoading] = useState(null)
   const [hiringVolunteerId, setHiringVolunteerId] = useState(null)
+  const { themePreference } = useThemeBear((state) => state)
+  const systemColorScheme = useColorScheme()
+
+  const resolvedTheme = themePreference === 'system'
+    ? (systemColorScheme === 'dark' ? 'dark' : 'light')
+    : themePreference
+  const isDarkMode = resolvedTheme === 'dark'
+
+  const colors = {
+    page: isDarkMode ? '#0b1220' : '#f8fafc',
+    surface: isDarkMode ? '#111827' : '#ffffff',
+    border: isDarkMode ? '#263244' : '#e5e7eb',
+    text: isDarkMode ? '#f8fafc' : '#111827',
+    textMuted: isDarkMode ? '#cbd5e1' : '#4b5563',
+    textSoft: isDarkMode ? '#94a3b8' : '#6b7280',
+    accent: isDarkMode ? '#f87171' : '#dc2626',
+    accentSoftBg: isDarkMode ? 'rgba(248, 113, 113, 0.18)' : '#fee2e2',
+    accentSoftBorder: isDarkMode ? 'rgba(248, 113, 113, 0.35)' : '#fecaca',
+    neutralSurface: isDarkMode ? '#0f172a' : '#ffffff',
+    neutralBorder: isDarkMode ? '#334155' : '#d1d5db',
+  }
   const {
     nearbyVolunteers,
     latestAlert,
@@ -51,6 +73,42 @@ export default function SendedAlert() {
 
   const isClosedAlert = latestAlert?.mode === 'Cancelled' || latestAlert?.mode === 'End'
   const isSearchingVolunteer = latestAlert?.mode === 'Active'
+
+  const alertStatusMeta = (() => {
+    if (latestAlert?.mode === 'Alloted') {
+      return {
+        message: 'Volunteer assigned. You can now open hired volunteer details.',
+        textColor: isDarkMode ? '#86efac' : '#15803d',
+        backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : '#dcfce7',
+        borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.35)' : '#bbf7d0',
+      }
+    }
+
+    if (latestAlert?.mode === 'Cancelled') {
+      return {
+        message: 'This alert is cancelled.',
+        textColor: isDarkMode ? '#fca5a5' : '#b91c1c',
+        backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2',
+        borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.35)' : '#fecaca',
+      }
+    }
+
+    if (latestAlert?.mode === 'End') {
+      return {
+        message: 'This alert is completed successfully.',
+        textColor: isDarkMode ? '#86efac' : '#15803d',
+        backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : '#dcfce7',
+        borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.35)' : '#bbf7d0',
+      }
+    }
+
+    return {
+      message: "Waiting for any volunteer to click I'm In.",
+      textColor: isDarkMode ? '#fcd34d' : '#b45309',
+      backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7',
+      borderColor: isDarkMode ? 'rgba(245, 158, 11, 0.35)' : '#fde68a',
+    }
+  })()
 
   const getVolunteerAction = (volunteerId) => {
     if (latestAlert?.mode === 'Cancelled') {
@@ -227,44 +285,54 @@ export default function SendedAlert() {
   }
 
   return (
-    <View className='flex-1 bg-white'>
-      <View className='absolute top-0 left-0 right-0 h-1 bg-red-600 z-10' />
+    <View className='flex-1' style={{ backgroundColor: colors.page }}>
+      <View className='absolute top-0 left-0 right-0 h-1 z-10' style={{ backgroundColor: colors.accent }} />
+      <View
+        style={{
+          position: 'absolute',
+          top: -40,
+          right: -20,
+          width: 170,
+          height: 170,
+          borderRadius: 999,
+          backgroundColor: isDarkMode ? '#1e293b' : '#fee2e2',
+        }}
+      />
 
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 52 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className='mb-8'>
-          <Text className='text-3xl font-black text-black tracking-tight'>Alert Sent</Text>
-          <Text className='text-xs text-gray-400 mt-2 font-medium tracking-widest uppercase'>
+        <View className='mb-6 border rounded-2xl p-5' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+          <Text className='text-3xl font-black tracking-tight' style={{ color: colors.text }}>Alert Sent</Text>
+          <Text className='text-xs mt-2 font-medium tracking-widest uppercase' style={{ color: colors.textSoft }}>
             Nearby volunteers who can help
           </Text>
 
-          {
-            latestAlert?.mode === 'Alloted' ? (
-              <Text className='text-sm text-green-700 mt-3 font-semibold'>Volunteer assigned. You can now open hired volunteer details.</Text>
-            ) : latestAlert?.mode === 'Cancelled' ? (
-              <Text className='text-sm text-red-700 mt-3 font-semibold'>This alert is cancelled.</Text>
-            ) : latestAlert?.mode === 'End' ? (
-              <Text className='text-sm text-green-700 mt-3 font-semibold'>This alert is completed successfully.</Text>
-            ) : (
-              <Text className='text-sm text-amber-700 mt-3 font-semibold'>Waiting for any volunteer to click I'm In.</Text>
-            )
-          }
+          <Text
+            className='text-sm mt-3 font-semibold rounded-xl px-3 py-2 border'
+            style={{
+              color: alertStatusMeta.textColor,
+              backgroundColor: alertStatusMeta.backgroundColor,
+              borderColor: alertStatusMeta.borderColor,
+            }}
+          >
+            {alertStatusMeta.message}
+          </Text>
 
-          <Text className='text-sm text-gray-500 mt-4'>
+          <Text className='text-sm mt-4' style={{ color: colors.textMuted }}>
             Total nearby volunteers: {nearbyVolunteers?.length || 0}
           </Text>
           {
             latestAlert?._id ? (
-              <Text className='text-xs text-gray-400 mt-1'>Alert ID: {latestAlert._id}</Text>
+              <Text className='text-xs mt-1' style={{ color: colors.textSoft }}>Alert ID: {latestAlert._id}</Text>
             ) : null
           }
         </View>
 
         {
           isSearchingVolunteer ? (
-            <View className='border-2 border-red-100 bg-red-50 p-5 mb-6'>
+            <View className='border rounded-2xl p-5 mb-6' style={{ borderColor: colors.accentSoftBorder, backgroundColor: colors.accentSoftBg }}>
               <VolunteerRadarSearch
                 size={165}
                 title='Finding Nearby Volunteers'
@@ -276,9 +344,9 @@ export default function SendedAlert() {
 
         {
           (nearbyVolunteers?.length || 0) === 0 ? (
-            <View className='border-2 border-gray-100 p-5'>
-              <Text className='text-sm text-gray-500'>No nearby volunteers found right now.</Text>
-              <Text className='text-xs text-gray-400 mt-2'>Try sending alert again after a while.</Text>
+            <View className='border rounded-2xl p-5' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              <Text className='text-sm' style={{ color: colors.textMuted }}>No nearby volunteers found right now.</Text>
+              <Text className='text-xs mt-2' style={{ color: colors.textSoft }}>Try sending alert again after a while.</Text>
             </View>
           ) : (
             nearbyVolunteers.map((volunteer, index) => {
@@ -288,26 +356,27 @@ export default function SendedAlert() {
               const isHiringThisVolunteer = String(hiringVolunteerId) === String(volunteer?._id)
 
               return (
-                <View key={volunteer?._id || String(index)} className='border-2 border-gray-100 p-4 mb-4'>
-                  <Text className='text-lg font-black text-black'>Volunteer {index + 1}</Text>
-                  <Text className='text-sm text-gray-600 mt-2'>Email: {volunteer?.email || 'N/A'}</Text>
-                  <Text className='text-sm text-gray-600 mt-1'>Phone: {volunteer?.phone || 'N/A'}</Text>
-                  <Text className='text-sm text-gray-600 mt-1'>Mode: {volunteer?.mode || 'N/A'}</Text>
-                  <Text className='text-xs text-gray-400 mt-2'>
+                <View key={volunteer?._id || String(index)} className='border rounded-2xl p-4 mb-4' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+                  <Text className='text-lg font-black' style={{ color: colors.text }}>Volunteer {index + 1}</Text>
+                  <Text className='text-sm mt-2' style={{ color: colors.textMuted }}>Email: {volunteer?.email || 'N/A'}</Text>
+                  <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Phone: {volunteer?.phone || 'N/A'}</Text>
+                  <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Mode: {volunteer?.mode || 'N/A'}</Text>
+                  <Text className='text-xs mt-2' style={{ color: colors.textSoft }}>
                     Lat: {typeof latitude === 'number' ? latitude.toFixed(6) : 'N/A'} | Lng: {typeof longitude === 'number' ? longitude.toFixed(6) : 'N/A'}
                   </Text>
 
                   <View className='flex-row gap-3 mt-4'>
                     <TouchableOpacity
-                      className='flex-1 border-2 border-black py-3 items-center'
+                      className='flex-1 border rounded-xl py-3 items-center'
+                      style={{ borderColor: colors.neutralBorder, backgroundColor: colors.neutralSurface }}
                       activeOpacity={0.8}
                       onPress={() => callVolunteerHandler(volunteer?.phone)}
                     >
-                      <Text className='text-black font-black text-xs tracking-widest uppercase'>Call</Text>
+                      <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.text }}>Call</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      className={`flex-1 py-3 items-center ${volunteerAction.className}`}
+                      className={`flex-1 py-3 items-center rounded-xl ${volunteerAction.className}`}
                       activeOpacity={0.85}
                       disabled={!volunteerAction.enabled || Boolean(hiringVolunteerId) || Boolean(alertActionLoading) || sendingAnotherAlert}
                       onPress={() => hireVolunteerHandler(volunteer)}
@@ -329,14 +398,18 @@ export default function SendedAlert() {
         {
           !isClosedAlert && latestAlert?._id ? (
             <TouchableOpacity
-              className={`border-2 py-4 items-center mt-2 ${alertActionLoading === 'cancel' ? 'border-red-300 bg-red-50' : 'border-red-600'}`}
+              className='border py-4 items-center rounded-xl mt-2'
+              style={{
+                borderColor: colors.accent,
+                backgroundColor: alertActionLoading === 'cancel' ? colors.accentSoftBg : colors.neutralSurface,
+              }}
               activeOpacity={0.85}
               disabled={Boolean(alertActionLoading) || sendingAnotherAlert}
               onPress={cancelAlertHandler}
             >
               <View className='flex-row items-center gap-2'>
-                {alertActionLoading === 'cancel' ? <ActivityIndicator color='#dc2626' size='small' /> : null}
-                <Text className='text-red-600 font-black text-sm tracking-widest uppercase'>
+                {alertActionLoading === 'cancel' ? <ActivityIndicator color={colors.accent} size='small' /> : null}
+                <Text className='font-black text-sm tracking-widest uppercase' style={{ color: colors.accent }}>
                   {alertActionLoading === 'cancel' ? 'Cancelling...' : 'Cancel Alert'}
                 </Text>
               </View>
@@ -347,7 +420,7 @@ export default function SendedAlert() {
         {
           latestAlert?.mode === 'Alloted' ? (
             <TouchableOpacity
-              className={`py-4 items-center mt-3 ${alertActionLoading === 'end' ? 'bg-green-400' : 'bg-green-600'}`}
+              className={`py-4 items-center rounded-xl mt-3 ${alertActionLoading === 'end' ? 'bg-green-400' : 'bg-green-600'}`}
               activeOpacity={0.85}
               disabled={Boolean(alertActionLoading) || sendingAnotherAlert}
               onPress={endAlertHandler}
@@ -365,12 +438,13 @@ export default function SendedAlert() {
         {
           latestAlert?._id && latestAlert?.mode !== 'Alloted' ? (
             <TouchableOpacity
-              className='border-2 border-red-600 py-4 items-center mt-2'
+              className='border rounded-xl py-4 items-center mt-2'
+              style={{ borderColor: colors.accent, backgroundColor: colors.neutralSurface }}
               activeOpacity={0.85}
               disabled={alertStatusLoader || sendingAnotherAlert || Boolean(alertActionLoading)}
               onPress={sendAnotherAlertHandler}
             >
-              <Text className='text-red-600 font-black text-sm tracking-widest uppercase'>
+              <Text className='font-black text-sm tracking-widest uppercase' style={{ color: colors.accent }}>
                 {sendingAnotherAlert
                   ? 'Sending New Alert...'
                   : (latestAlert?.mode === 'Active' ? 'Cancel & Send Another Alert' : 'Send Another Alert')}
@@ -380,7 +454,7 @@ export default function SendedAlert() {
         }
       </ScrollView>
 
-      <View className='absolute bottom-0 left-0 right-0 h-1 bg-red-600' />
+      <View className='absolute bottom-0 left-0 right-0 h-1' style={{ backgroundColor: colors.accent }} />
     </View>
   )
 }

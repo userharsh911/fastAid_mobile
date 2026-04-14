@@ -1,6 +1,6 @@
 import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, KeyboardAvoidingView, Platform, TouchableNativeFeedback, Keyboard, TouchableWithoutFeedback, Alert, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
-import { Link, useRouter } from 'expo-router'
+import { Link } from 'expo-router'
 import useUserBear from '../../../store/user.store'
 
 export default function Index() {
@@ -12,7 +12,6 @@ export default function Index() {
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [signingUp, setSigningUp] = useState(false)
-  const routes = useRouter();
   const {signupUser} = useUserBear(state=>state);
 
 
@@ -34,7 +33,7 @@ export default function Index() {
 
       const res = await signupUser({fullname,email,password,phone})
       if(res.success){
-        routes.replace('/(app)/(tabs)');
+        console.log('user signup success')
       }
     } catch (error) {
       Alert.alert("Error ",error?.message || "Error while signing up");
