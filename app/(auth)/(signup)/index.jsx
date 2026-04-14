@@ -1,27 +1,45 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, KeyboardAvoidingView, Platform, TouchableNativeFeedback, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, KeyboardAvoidingView, Platform, TouchableNativeFeedback, Keyboard, TouchableWithoutFeedback, Alert, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
 import { Link, useRouter } from 'expo-router'
 import useUserBear from '../../../store/user.store'
 
 export default function Index() {
+  const [fullname, setFullname] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [signingUp, setSigningUp] = useState(false)
   const routes = useRouter();
   const {signupUser} = useUserBear(state=>state);
 
 
   const signupHandler = async()=>{
+    if (signingUp) return
+
     try {
-      const res = await signupUser({email,password,phone})
+      if (!fullname.trim() || !email.trim() || !phone.trim() || !password) {
+        Alert.alert('Missing fields', 'Please fill all required fields.')
+        return
+      }
+
+      if (password !== confirmPassword) {
+        Alert.alert('Error', 'Passwords do not match')
+        return
+      }
+
+      setSigningUp(true)
+
+      const res = await signupUser({fullname,email,password,phone})
       if(res.success){
         routes.replace('/(app)/(tabs)');
       }
     } catch (error) {
       Alert.alert("Error ",error?.message || "Error while signing up");
+    } finally {
+      setSigningUp(false)
     }
   }
 
@@ -54,6 +72,19 @@ export default function Index() {
           <Text className="text-xs text-gray-400 mt-3 font-medium tracking-widest uppercase">
             Join us today
           </Text>
+        </View>
+
+        <View className="mb-5">
+          <Text className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-2">
+            Full Name
+          </Text>
+          <TextInput
+            value={fullname}
+            onChangeText={setFullname}
+            placeholder="Enter your full name"
+            placeholderTextColor="#d1d5db"
+            className="border-b-2 border-gray-200 py-3 text-base text-black font-medium"
+          />
         </View>
 
         {/* Email Field */}
@@ -140,13 +171,17 @@ export default function Index() {
 
         {/* Signup Button */}
         <TouchableOpacity
-          className="bg-red-600 py-4 items-center"
+          className={`py-4 items-center ${signingUp ? 'bg-red-400' : 'bg-red-600'}`}
           activeOpacity={0.85}
+          disabled={signingUp}
           onPress={signupHandler}
         >
-          <Text className="text-white font-black text-sm tracking-widest uppercase">
-            Create Account
-          </Text>
+          <View className='flex-row items-center gap-2'>
+            {signingUp ? <ActivityIndicator color='#fff' size='small' /> : null}
+            <Text className="text-white font-black text-sm tracking-widest uppercase">
+              {signingUp ? 'Creating Account...' : 'Create Account'}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         <View className="flex-row justify-between items-center my-4">

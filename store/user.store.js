@@ -2,13 +2,18 @@ import {create } from "zustand"
 import userInstance from "../api/user.api"
 import * as SecureStore from 'expo-secure-store';
 
-const useUserBear = create((set)=>({
+const ACTIVE_ALERT_ID_KEY = 'activeAlertId';
+
+const useUserBear = create((set, get)=>({
     user:null,
     token:null,
     userLoader:true,
     latestAlert:null,
     nearbyVolunteers:[],
     selectedVolunteer:null,
+    alertStatusLoader:false,
+    alertHistory:[],
+    alertHistoryLoader:false,
     signupUser:async(data)=>{
         try {
             console.log("signup data : ",data)
@@ -16,6 +21,7 @@ const useUserBear = create((set)=>({
             set({user:response.data.user})
             set({token:response.data.token})
             await SecureStore.setItemAsync('userToken',response.data?.token);
+            await SecureStore.deleteItemAsync('guest');
             return response.data;
         } catch (error) {
             console.log("Error while signup user : ",error);
@@ -29,6 +35,7 @@ const useUserBear = create((set)=>({
             set({user:response.data.user})
             set({token:response.data.token})
             await SecureStore.setItemAsync('userToken',response.data?.token);
+            await SecureStore.deleteItemAsync('guest');
             return response.data;
         } catch (error) {
             console.log("Error while login user : ",error);
@@ -39,11 +46,46 @@ const useUserBear = create((set)=>({
         try {
             const response = await userInstance.post('/auth/guest',data);
             set({user:response.data?.user});
+            set({token:null});
+            await SecureStore.deleteItemAsync('userToken');
             await SecureStore.setItemAsync('guest',JSON.stringify(response.data?.user));
             return response.data;
         } catch (error) {
             console.log("error while login as a guest ",error);
             throw error.response?.data;
+        }
+    },
+    convertGuestToUser: async(data)=>{
+        try {
+            const guest = await SecureStore.getItemAsync('guest');
+            if(!guest) throw {message:'Guest session not found'};
+
+            const guestUser = JSON.parse(guest);
+            if(!guestUser?._id) throw {message:'Guest account is invalid'};
+
+            const response = await userInstance.post('/auth/guest', {
+                id: guestUser._id,
+                fullname: data?.fullname,
+                phone: data?.phone,
+                email: data?.email,
+                password: data?.password,
+            });
+
+            set({
+                user: response.data?.user,
+                token: response.data?.token || null,
+            });
+
+            if(response.data?.token){
+                await SecureStore.setItemAsync('userToken', response.data.token);
+            }
+
+            await SecureStore.deleteItemAsync('guest');
+
+            return response.data;
+        } catch (error) {
+            console.log("error while converting guest account ",error);
+            throw error.response?.data || error;
         }
     },
     getUser: async()=>{
@@ -53,15 +95,33 @@ const useUserBear = create((set)=>({
             const guest = await SecureStore.getItemAsync('guest');
             if(userToken){
                 const response = await userInstance.get(`/auth/user/${userToken}`)
-                set({user:response.data.user});
+                set({user:response.data.user, token:userToken});
             } else if(guest){
-                set({user:JSON.parse(guest)});
+                set({user:JSON.parse(guest), token:null});
             }
         } catch (error) {
             console.log("error while getting user : ",error);
             // throw error.response?.data;
         } finally{
             set({userLoader:false})
+        }
+    },
+    updateUserProfile: async(data)=>{
+        try {
+            const userToken = await SecureStore.getItemAsync('userToken');
+            if(!userToken) throw {message:'Please complete full login first'};
+
+            const response = await userInstance.post(`/auth/profile/${userToken}`, {
+                fullname: data?.fullname,
+                phone: data?.phone,
+            });
+
+            set({user:response.data?.user || null});
+
+            return response.data;
+        } catch (error) {
+            console.log("error while updating user profile ",error);
+            throw error.response?.data || error;
         }
     },
     createAlert: async(data)=>{
@@ -76,12 +136,19 @@ const useUserBear = create((set)=>({
                 endpoint = `/alert/create/${userToken}`;
             }else if(guest){
                 const guestUser = JSON.parse(guest);
+                console.log(guestUser)
                 if(guestUser?._id){
                     payload.as_guest = guestUser._id;
                 }
             }
 
             const response = await userInstance.post(endpoint,payload);
+            const alertId = response.data?.alert?._id;
+
+            if (alertId) {
+                await SecureStore.setItemAsync(ACTIVE_ALERT_ID_KEY, String(alertId));
+            }
+
             set({
                 latestAlert: response.data?.alert || null,
                 nearbyVolunteers: response.data?.nearbyVolunteers || [],
@@ -93,18 +160,265 @@ const useUserBear = create((set)=>({
             throw error.response?.data || error;
         }
     },
+    fetchAlertStatus: async(alertId, showLoader = true)=>{
+        try {
+            if(!alertId) return {success:false};
+
+            if (showLoader) {
+                set({alertStatusLoader:true});
+            }
+
+            const userToken = await SecureStore.getItemAsync('userToken');
+            const guest = await SecureStore.getItemAsync('guest');
+
+            const payload = {};
+            let endpoint = `/alert/status/${alertId}`;
+
+            if(userToken){
+                endpoint = `/alert/status/${alertId}/${userToken}`;
+            }else if(guest){
+                const guestUser = JSON.parse(guest);
+                if(guestUser?._id){
+                    payload.as_guest = guestUser._id;
+                }
+            }
+
+            const response = await userInstance.post(endpoint,payload);
+            const alertData = response.data?.alert || null;
+            const nearby = response.data?.nearbyVolunteers || [];
+            const assignedVolunteerId = alertData?.volunteer_id?._id || alertData?.volunteer_id;
+            const assignedVolunteer = nearby.find(
+                (volunteer)=> String(volunteer?._id) === String(assignedVolunteerId)
+            ) || alertData?.volunteer_id || null;
+
+            if (alertData?._id) {
+                await SecureStore.setItemAsync(ACTIVE_ALERT_ID_KEY, String(alertData._id));
+            }
+
+            if (alertData?.mode === 'Cancelled' || alertData?.mode === 'End') {
+                await SecureStore.deleteItemAsync(ACTIVE_ALERT_ID_KEY);
+            }
+
+            set({
+                latestAlert: alertData,
+                nearbyVolunteers: nearby,
+                selectedVolunteer: alertData?.mode === 'Alloted' ? assignedVolunteer : null,
+            });
+            return response.data;
+        } catch (error) {
+            console.log("error while fetching alert status ",error);
+
+            if (error?.status === 404 || error?.response?.status === 404) {
+                await SecureStore.deleteItemAsync(ACTIVE_ALERT_ID_KEY);
+                set({latestAlert:null, nearbyVolunteers:[], selectedVolunteer:null});
+                return {success:false};
+            }
+
+            throw error.response?.data || error;
+        } finally{
+            if (showLoader) {
+                set({alertStatusLoader:false});
+            }
+        }
+    },
+    loadLatestAlertStatus: async()=>{
+        try {
+            const alertId = await SecureStore.getItemAsync(ACTIVE_ALERT_ID_KEY);
+            if(!alertId) return {success:false};
+
+            return await get().fetchAlertStatus(alertId, false);
+        } catch (error) {
+            console.log("error while loading latest alert status ",error);
+            throw error;
+        }
+    },
+    getAlertHistory: async(showLoader = false)=>{
+        try {
+            if(showLoader){
+                set({alertHistoryLoader:true});
+            }
+
+            const userToken = await SecureStore.getItemAsync('userToken');
+            const guest = await SecureStore.getItemAsync('guest');
+
+            const payload = {};
+            let endpoint = '/alert/history';
+
+            if(userToken){
+                endpoint = `/alert/history/${userToken}`;
+            }else if(guest){
+                const guestUser = JSON.parse(guest);
+                if(guestUser?._id){
+                    payload.as_guest = guestUser._id;
+                }
+            }
+
+            const response = await userInstance.post(endpoint, payload);
+            set({alertHistory: response.data?.alerts || []});
+
+            return response.data;
+        } catch (error) {
+            console.log("error while getting alert history ",error);
+            throw error.response?.data || error;
+        } finally {
+            if(showLoader){
+                set({alertHistoryLoader:false});
+            }
+        }
+    },
+    cancelAlert: async(alertId)=>{
+        try {
+            const targetAlertId = alertId || get().latestAlert?._id;
+            if(!targetAlertId) return {success:false, message:"Alert id is required"};
+
+            set({alertStatusLoader:true});
+
+            const userToken = await SecureStore.getItemAsync('userToken');
+            const guest = await SecureStore.getItemAsync('guest');
+
+            const payload = { alertId: targetAlertId };
+            let endpoint = '/alert/cancel';
+
+            if(userToken){
+                endpoint = `/alert/cancel/${userToken}`;
+            }else if(guest){
+                const guestUser = JSON.parse(guest);
+                if(guestUser?._id){
+                    payload.as_guest = guestUser._id;
+                }
+            }
+
+            const response = await userInstance.post(endpoint, payload);
+            const alertData = response.data?.alert || null;
+
+            if (alertData?.mode === 'Cancelled' || alertData?.mode === 'End') {
+                await SecureStore.deleteItemAsync(ACTIVE_ALERT_ID_KEY);
+            }
+
+            set({
+                latestAlert: alertData,
+                selectedVolunteer: null,
+            });
+
+            return response.data;
+        } catch (error) {
+            console.log("error while cancelling alert ",error);
+            throw error.response?.data || error;
+        } finally {
+            set({alertStatusLoader:false});
+        }
+    },
+    endAlert: async(alertId)=>{
+        try {
+            const targetAlertId = alertId || get().latestAlert?._id;
+            if(!targetAlertId) return {success:false, message:"Alert id is required"};
+
+            set({alertStatusLoader:true});
+
+            const userToken = await SecureStore.getItemAsync('userToken');
+            const guest = await SecureStore.getItemAsync('guest');
+
+            const payload = { alertId: targetAlertId };
+            let endpoint = '/alert/end';
+
+            if(userToken){
+                endpoint = `/alert/end/${userToken}`;
+            }else if(guest){
+                const guestUser = JSON.parse(guest);
+                if(guestUser?._id){
+                    payload.as_guest = guestUser._id;
+                }
+            }
+
+            const response = await userInstance.post(endpoint, payload);
+            const alertData = response.data?.alert || null;
+
+            if (alertData?.mode === 'Cancelled' || alertData?.mode === 'End') {
+                await SecureStore.deleteItemAsync(ACTIVE_ALERT_ID_KEY);
+            }
+
+            set({
+                latestAlert: alertData,
+                selectedVolunteer: null,
+            });
+
+            return response.data;
+        } catch (error) {
+            console.log("error while ending alert ",error);
+            throw error.response?.data || error;
+        } finally {
+            set({alertStatusLoader:false});
+        }
+    },
+    hireVolunteer: async(alertId, volunteerId)=>{
+        try {
+            const targetAlertId = alertId || get().latestAlert?._id;
+            if(!targetAlertId || !volunteerId) return {success:false, message:"Alert id and volunteer id are required"};
+
+            set({alertStatusLoader:true});
+
+            const userToken = await SecureStore.getItemAsync('userToken');
+            const guest = await SecureStore.getItemAsync('guest');
+
+            const payload = { alertId: targetAlertId, volunteerId };
+            let endpoint = '/alert/hire';
+
+            if(userToken){
+                endpoint = `/alert/hire/${userToken}`;
+            }else if(guest){
+                const guestUser = JSON.parse(guest);
+                if(guestUser?._id){
+                    payload.as_guest = guestUser._id;
+                }
+            }
+
+            const response = await userInstance.post(endpoint, payload);
+            const alertData = response.data?.alert || null;
+            const assignedVolunteerId = alertData?.volunteer_id?._id || alertData?.volunteer_id;
+            const assignedVolunteer = get().nearbyVolunteers.find(
+                (volunteer)=> String(volunteer?._id) === String(assignedVolunteerId)
+            ) || alertData?.volunteer_id || null;
+
+            if (alertData?._id) {
+                await SecureStore.setItemAsync(ACTIVE_ALERT_ID_KEY, String(alertData._id));
+            }
+
+            set({
+                latestAlert: alertData,
+                selectedVolunteer: assignedVolunteer,
+            });
+
+            return response.data;
+        } catch (error) {
+            console.log("error while hiring volunteer ",error);
+            throw error.response?.data || error;
+        } finally {
+            set({alertStatusLoader:false});
+        }
+    },
     setSelectedVolunteer:(volunteer)=>{
         set({selectedVolunteer: volunteer || null});
     },
     clearAlertState:()=>{
-        set({latestAlert:null, nearbyVolunteers:[], selectedVolunteer:null});
+        SecureStore.deleteItemAsync(ACTIVE_ALERT_ID_KEY).catch(() => {});
+        set({latestAlert:null, nearbyVolunteers:[], selectedVolunteer:null, alertStatusLoader:false});
     },
     logoutUser:async()=>{
         try {
             await SecureStore.deleteItemAsync('userToken');  
             await SecureStore.deleteItemAsync('guest');
+            await SecureStore.deleteItemAsync(ACTIVE_ALERT_ID_KEY);
             console.log("out from logout");
-            set({user:null, token:null, latestAlert:null, nearbyVolunteers:[], selectedVolunteer:null})
+            set({
+                user:null,
+                token:null,
+                latestAlert:null,
+                nearbyVolunteers:[],
+                selectedVolunteer:null,
+                alertStatusLoader:false,
+                alertHistory:[],
+                alertHistoryLoader:false,
+            })
         } catch (error) {
             console.log("Error while logout user : ",error);
             throw error.response?.data;

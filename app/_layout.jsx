@@ -3,10 +3,14 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import useUserBear from "../store/user.store";
 import useVolunteerBear from "../store/volunteer.store"
+import useSocketBear from "../store/socket.store";
 import * as Notifications from "expo-notifications";
+import * as NavigationBar from "expo-navigation-bar";
 import Constants from "expo-constants";
+import { clearActiveAlertReminderNotification, syncActiveAlertReminderNotification } from "../libs/alertReminderNotification";
+import EmergencyLoader from "../components/common/EmergencyLoader";
 import "../global.css";
-import { ActivityIndicator, Platform } from "react-native";
+import { Platform, View } from "react-native";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -17,8 +21,9 @@ Notifications.setNotificationHandler({
 });
 
 export default function RootLayout() {
-  const { user , getUser, userLoader} = useUserBear((state) => state);
+  const { user , getUser, userLoader, latestAlert, loadLatestAlertStatus } = useUserBear((state) => state);
   const {volunteer, getVolunteer, volunteerLoader, saveVolunteerPushToken} = useVolunteerBear(state=>state);
+  const { connectUserSocket, connectVolunteerSocket, disconnectSocket } = useSocketBear(state=>state);
   const routes = useRouter()
   const segments = useSegments()  
   const rootNavigationState = useRootNavigationState();
@@ -28,6 +33,21 @@ export default function RootLayout() {
     getVolunteer();
     console.log("user get kiya ")
   },[getUser,getVolunteer])
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const configureNavigationBar = async () => {
+      try {
+        await NavigationBar.setBackgroundColorAsync("#ffffff");
+        await NavigationBar.setButtonStyleAsync("dark");
+      } catch (error) {
+        console.log("failed to configure navigation bar", error);
+      }
+    };
+
+    configureNavigationBar();
+  }, []);
 
   useEffect(() => {
     const registerPushToken = async () => {
@@ -69,6 +89,43 @@ export default function RootLayout() {
 
     registerPushToken();
   }, [volunteer?._id, saveVolunteerPushToken]);
+
+  useEffect(() => {
+    const handleSocketConnection = async () => {
+      if (user?._id) {
+        await connectUserSocket();
+        return;
+      }
+
+      if (volunteer?._id) {
+        await connectVolunteerSocket();
+        return;
+      }
+
+      disconnectSocket();
+    };
+
+    handleSocketConnection().catch(() => {});
+  }, [user?._id, volunteer?._id, connectUserSocket, connectVolunteerSocket, disconnectSocket]);
+
+  useEffect(() => {
+    if (!user?._id) return;
+
+    loadLatestAlertStatus().catch(() => {});
+  }, [user?._id, loadLatestAlertStatus]);
+
+  useEffect(() => {
+    const syncAlertReminder = async () => {
+      if (!user?._id || !latestAlert?._id) {
+        await clearActiveAlertReminderNotification();
+        return;
+      }
+
+      await syncActiveAlertReminderNotification(latestAlert);
+    };
+
+    syncAlertReminder().catch(() => {});
+  }, [user?._id, latestAlert, latestAlert?._id, latestAlert?.mode, latestAlert?.createdAt]);
 
   useEffect(() => {
     const navigateFromNotification = (response) => {
@@ -123,7 +180,15 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1 }}>
         {
-          (userLoader || volunteerLoader) ? <ActivityIndicator size="large" /> :
+          (userLoader || volunteerLoader) ? (
+            <View style={{ flex: 1, backgroundColor: '#fff' }}>
+              <EmergencyLoader
+                fullScreen
+                size='large'
+                label='Preparing Emergency Guardian'
+              />
+            </View>
+          ) :
           <Stack
             screenOptions={{
               headerShown: false,

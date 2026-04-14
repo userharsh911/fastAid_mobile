@@ -12,6 +12,7 @@ export default function _layout() {
         <Stack.Screen name='index'/>
         <Stack.Screen name='sendedAlert'/>
         <Stack.Screen name='hireVolunteer'/>
+        <Stack.Screen name='alertMap'/>
     </Stack>
   )
 }

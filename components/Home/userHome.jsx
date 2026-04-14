@@ -1,5 +1,5 @@
 import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, Image, Alert } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
@@ -9,8 +9,16 @@ export default function UserHome({user}) {
   const [image, setImage] = useState(null)
   const [description, setDescription] = useState('')
   const [sendingAlert, setSendingAlert] = useState(false)
-  const { createAlert } = useUserBear(state=>state)
+  const { createAlert, loadLatestAlertStatus, latestAlert } = useUserBear(state=>state)
   const routes = useRouter()
+
+  useEffect(() => {
+    loadLatestAlertStatus().catch(() => {})
+  }, [loadLatestAlertStatus])
+
+  const hasTrackedAlert = Boolean(
+    latestAlert?._id && latestAlert?.mode !== 'Cancelled' && latestAlert?.mode !== 'End'
+  )
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -36,6 +44,16 @@ export default function UserHome({user}) {
   }
 
   const sendAlertHandler = async () => {
+    if (hasTrackedAlert) {
+      if (latestAlert?.mode === 'Alloted') {
+        Alert.alert('Current Alert Already Assigned', 'Volunteer assign ho chuka hai. Naya alert bhejne se pehle current alert cancel karo.')
+      } else {
+        Alert.alert('Current Alert Active', 'Track Alert me jaake Send Another Alert dabao. Wo pehle current active alert cancel karega.')
+      }
+      routes.push('/(app)/(tabs)/(home)/sendedAlert')
+      return
+    }
+
     try {
       setSendingAlert(true)
 
@@ -102,6 +120,27 @@ export default function UserHome({user}) {
           <Text className="text-xs text-gray-400 mt-2 font-medium tracking-widest uppercase">
             Send alert to nearby volunteers
           </Text>
+
+          {
+            hasTrackedAlert ? (
+              <View className='mt-4 border-2 border-red-200 p-4'>
+                <Text className='text-xs text-red-600 font-black tracking-widest uppercase'>Current Alert</Text>
+                <Text className='text-sm text-gray-700 mt-2'>
+                  Status: {latestAlert?.mode === 'Alloted' ? 'Hired' : 'Waiting for volunteer'}
+                </Text>
+                <TouchableOpacity
+                  className='mt-3 bg-red-600 py-3 items-center'
+                  activeOpacity={0.85}
+                  onPress={() => routes.push('/(app)/(tabs)/(home)/sendedAlert')}
+                >
+                  <Text className='text-white font-black text-xs tracking-widest uppercase'>
+                    {latestAlert?.mode === 'Alloted' ? 'View Hired Volunteer' : 'Track Alert'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
+
         </View>
 
         {/* Alert Form Card */}
@@ -197,14 +236,14 @@ export default function UserHome({user}) {
 
         {/* Send Alert Button */}
         <TouchableOpacity
-          className="bg-red-600 py-5 items-center"
+          className={`py-5 items-center ${hasTrackedAlert ? 'bg-gray-300' : 'bg-red-600'}`}
           activeOpacity={0.85}
-          disabled={sendingAlert}
+          disabled={sendingAlert || hasTrackedAlert}
           onPress={sendAlertHandler}
         >
           <View className="flex-row items-center gap-2">
-            <Text className="text-white font-black text-sm tracking-widest uppercase">
-              {sendingAlert ? 'Sending...' : '🚨  Send Alert'}
+            <Text className={`${hasTrackedAlert ? 'text-gray-500' : 'text-white'} font-black text-sm tracking-widest uppercase`}>
+              {sendingAlert ? 'Sending...' : (hasTrackedAlert ? 'Track Current Alert First' : '🚨  Send Alert')}
             </Text>
           </View>
         </TouchableOpacity>

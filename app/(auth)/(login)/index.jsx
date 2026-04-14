@@ -1,21 +1,24 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
 import { Link, useRouter, useSegments } from 'expo-router'
 import useUserBear from "../../../store/user.store"
-import { useNavigation } from '@react-navigation/native'
 
 export default function Index() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
-  const navigation = useNavigation()
+  const [loggingIn, setLoggingIn] = useState(false)
+  const [guestLoggingIn, setGuestLoggingIn] = useState(false)
   const routes = useRouter()
   const segments = useSegments()
 
   const {loginAsGuest, loginUser} = useUserBear(state=>state);
 
   const guestLogin = async()=>{
+    if (guestLoggingIn || loggingIn) return
+
     try {
+      setGuestLoggingIn(true)
       const res = await loginAsGuest({as_guest:true});
       console.log("login check ",segments,res.success)
       if(res.success){
@@ -25,11 +28,16 @@ export default function Index() {
       }
     } catch (error) {
       Alert.alert("Error ",error.message)
+    } finally {
+      setGuestLoggingIn(false)
     }
   }
 
   const loginHandler = async()=>{
+    if (loggingIn || guestLoggingIn) return
+
     try {
+      setLoggingIn(true)
       const res = await loginUser({email,password});
       if(res.success){
         console.log("login sucess : ")
@@ -38,15 +46,28 @@ export default function Index() {
     } catch (error) {
       console.log("err ",error)
       Alert.alert("Error ",error?.message || "Error while logging in")
+    } finally {
+      setLoggingIn(false)
     }
   }
 
   return (
-    <View className="flex-1 bg-white px-6 justify-center">
+    <View className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* Top accent bar */}
       <View className="absolute top-0 left-0 right-0 h-1 bg-red-600" />
+
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 48 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
 
       {/* Header */}
       <View className="mb-12">
@@ -99,13 +120,17 @@ export default function Index() {
 
       {/* Login Button */}
       <TouchableOpacity
-        className="bg-red-600 py-4 items-center"
+        className={`py-4 items-center ${(loggingIn || guestLoggingIn) ? 'bg-red-400' : 'bg-red-600'}`}
         activeOpacity={0.85}
+        disabled={loggingIn || guestLoggingIn}
         onPress={loginHandler}
       >
-        <Text className="text-white font-black text-sm tracking-widest uppercase">
-          Login
-        </Text>
+        <View className='flex-row items-center gap-2'>
+          {loggingIn ? <ActivityIndicator color='#fff' size='small' /> : null}
+          <Text className="text-white font-black text-sm tracking-widest uppercase">
+            {loggingIn ? 'Logging In...' : 'Login'}
+          </Text>
+        </View>
       </TouchableOpacity>
 
       <View className="flex-row justify-between items-center my-4">
@@ -118,13 +143,17 @@ export default function Index() {
 
       {/* Login as Guest */}
       <TouchableOpacity
-        className="border-2 border-black py-4 items-center"
+        className={`border-2 py-4 items-center ${guestLoggingIn || loggingIn ? 'border-gray-300 bg-gray-100' : 'border-black'}`}
         activeOpacity={0.55}
+        disabled={guestLoggingIn || loggingIn}
         onPress={guestLogin}
       >
-        <Text className="text-black text-center font-black text-sm tracking-widest uppercase">
-          Login as Guest
-        </Text>
+        <View className='flex-row items-center gap-2'>
+          {guestLoggingIn ? <ActivityIndicator color='#111' size='small' /> : null}
+          <Text className={`text-center font-black text-sm tracking-widest uppercase ${guestLoggingIn || loggingIn ? 'text-gray-500' : 'text-black'}`}>
+            {guestLoggingIn ? 'Logging In As Guest...' : 'Login as Guest'}
+          </Text>
+        </View>
       </TouchableOpacity>
       <View className="flex-row justify-between items-center my-4">
         <View className="w-[45%] h-0.5 bg-black"></View>
@@ -156,6 +185,10 @@ export default function Index() {
           </Text>
         </Link>
       </View>
+
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
 
       {/* Bottom accent */}
       <View className="absolute bottom-0 left-0 right-0 h-1 bg-red-600" />

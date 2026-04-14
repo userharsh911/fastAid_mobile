@@ -1,12 +1,13 @@
-import { View, Text, TouchableOpacity, Linking } from 'react-native'
-import React from 'react'
+import { View, Text, TouchableOpacity, Linking, Alert, ScrollView, ActivityIndicator } from 'react-native'
+import React, { useState } from 'react'
 import { useRouter } from 'expo-router'
 import MapView, { Marker } from 'react-native-maps'
 import useUserBear from '../../../../store/user.store'
 
 export default function HireVolunteer() {
   const routes = useRouter()
-  const { selectedVolunteer } = useUserBear(state=>state)
+  const [completingWork, setCompletingWork] = useState(false)
+  const { selectedVolunteer, latestAlert, endAlert, clearAlertState } = useUserBear(state=>state)
 
   const longitude = selectedVolunteer?.location?.coordinates?.[0]
   const latitude = selectedVolunteer?.location?.coordinates?.[1]
@@ -30,6 +31,32 @@ export default function HireVolunteer() {
     }
   }
 
+  const markWorkCompletedHandler = () => {
+    if (!latestAlert?._id || completingWork) return
+
+    Alert.alert('Work Completed', 'Confirm volunteer reached and your work is done?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Completed',
+        onPress: async () => {
+          try {
+            setCompletingWork(true)
+            const response = await endAlert(latestAlert._id)
+            if (response?.success) {
+              Alert.alert('Completed', 'Alert marked as completed successfully.')
+              clearAlertState()
+              routes.replace('/(app)/(tabs)/(home)')
+            }
+          } catch (error) {
+            Alert.alert('Error', error?.message || 'Unable to complete alert')
+          } finally {
+            setCompletingWork(false)
+          }
+        },
+      },
+    ])
+  }
+
   if (!selectedVolunteer) {
     return (
       <View className='flex-1 bg-white px-6 justify-center'>
@@ -49,6 +76,11 @@ export default function HireVolunteer() {
   return (
     <View className='flex-1 bg-white'>
       <View className='absolute top-0 left-0 right-0 h-1 bg-red-600 z-10' />
+
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 56 }}
+        showsVerticalScrollIndicator={false}
+      >
 
       <View className='px-6 pt-14 pb-4'>
         <Text className='text-3xl font-black text-black'>Hire Volunteer</Text>
@@ -111,6 +143,24 @@ export default function HireVolunteer() {
           <Text className='text-white font-black text-xs tracking-widest uppercase'>Open in Maps</Text>
         </TouchableOpacity>
       </View>
+
+      <View className='px-6 mt-3'>
+        <TouchableOpacity
+          className={`py-4 items-center ${completingWork ? 'bg-green-400' : 'bg-green-600'}`}
+          activeOpacity={0.85}
+          disabled={completingWork}
+          onPress={markWorkCompletedHandler}
+        >
+          <View className='flex-row items-center gap-2'>
+            {completingWork ? <ActivityIndicator color='#fff' size='small' /> : null}
+            <Text className='text-white font-black text-xs tracking-widest uppercase'>
+              {completingWork ? 'Completing...' : 'Work Completed'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      </ScrollView>
 
       <View className='absolute bottom-0 left-0 right-0 h-1 bg-red-600' />
     </View>

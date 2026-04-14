@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
 import { Link, useRouter } from 'expo-router'
 import Ionicons from '@expo/vector-icons/Ionicons'
@@ -8,26 +8,43 @@ export default function Volunteer() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false)
   const {loginVolunteer} = useVolunteerBear(state=>state);
   const routes = useRouter()
 
   const loginHandler = async()=>{
+    if (loggingIn) return
+
     try {
+      setLoggingIn(true)
       const res = await loginVolunteer({email,password});
       if(res.success){
         routes.replace("/(app)/(tabs)");
       }
     } catch (error) {
       Alert.alert("Error ",error?.message || "Error while logging in");
+    } finally {
+      setLoggingIn(false)
     }
   }
 
   return (
-    <View className="flex-1 bg-white px-6 justify-center">
+    <View className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* Top accent bar */}
       <View className="absolute top-0 left-0 right-0 h-1 bg-red-600" />
+
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 48 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
 
       {/* Header */}
       <View className="mb-12">
@@ -80,13 +97,17 @@ export default function Volunteer() {
 
       {/* Login Button */}
       <TouchableOpacity
-        className="bg-red-600 py-4 items-center mb-4"
+        className={`py-4 items-center mb-4 ${loggingIn ? 'bg-red-400' : 'bg-red-600'}`}
         activeOpacity={0.85}
+        disabled={loggingIn}
         onPress={loginHandler}
       >
-        <Text className="text-white font-black text-sm tracking-widest uppercase">
-          Login as Volunteer
-        </Text>
+        <View className='flex-row items-center gap-2'>
+          {loggingIn ? <ActivityIndicator color='#fff' size='small' /> : null}
+          <Text className="text-white font-black text-sm tracking-widest uppercase">
+            {loggingIn ? 'Logging In...' : 'Login as Volunteer'}
+          </Text>
+        </View>
       </TouchableOpacity>
 
       {/* Back Link */}
@@ -95,6 +116,10 @@ export default function Volunteer() {
           <Ionicons name="arrow-back" size={14} /> Back to main login
         </Text>
       </Link>
+
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
 
       {/* Bottom accent */}
       <View className="absolute bottom-0 left-0 right-0 h-1 bg-red-600" />
