@@ -1,12 +1,11 @@
-import { View, Text, TouchableOpacity, Alert, ScrollView, TextInput, StatusBar, useColorScheme } from 'react-native'
+import { View, Text, TouchableOpacity, Alert, ScrollView, TextInput, StatusBar, Modal, useColorScheme, useWindowDimensions } from 'react-native'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import Constants from 'expo-constants'
 import * as Location from 'expo-location'
-import MapView, { Circle, Marker } from 'react-native-maps'
 import useUserBear from "../../../store/user.store"
 import useVolunteerBear from '../../../store/volunteer.store';
 import useThemeBear from '../../../store/theme.store';
 import EmergencyLoader from '../../../components/common/EmergencyLoader'
+import OpenStreetMapView from '../../../components/common/OpenStreetMapView'
 
 const DEFAULT_REGION = {
   latitude: 28.6139,
@@ -42,6 +41,7 @@ export default function Account() {
   const { user, logoutUser, convertGuestToUser, updateUserProfile } = useUserBear(state=>state);
   const { volunteer, logoutVolunteer, updateVolunteerLocation, updateVolunteerProfile } = useVolunteerBear(state=>state);
   const { themePreference, setThemePreference } = useThemeBear(state=>state);
+  const { height: windowHeight } = useWindowDimensions()
   const systemColorScheme = useColorScheme()
 
   const resolvedTheme = themePreference === 'system'
@@ -69,6 +69,7 @@ export default function Account() {
   const inputBackgroundColor = isDarkMode ? '#0f172a' : '#ffffff'
   const inputTextColor = isDarkMode ? '#f8fafc' : '#111827'
   const inputPlaceholderColor = isDarkMode ? '#64748b' : '#d1d5db'
+  const fullscreenMapHeight = Math.max(360, windowHeight - 220)
   const secondaryButtonStyle = {
     borderColor: isDarkMode ? '#334155' : '#d1d5db',
     backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
@@ -77,11 +78,12 @@ export default function Account() {
   const [editingLocation, setEditingLocation] = useState(false)
   const [selectedCoordinates, setSelectedCoordinates] = useState(null)
   const [mapRegion, setMapRegion] = useState(DEFAULT_REGION)
-  const editMapRef = useRef(null)
   const selectedCoordinatesRef = useRef(null)
   const [mapLoader, setMapLoader] = useState(false)
   const [savingLocation, setSavingLocation] = useState(false)
   const [refreshingCurrentLocation, setRefreshingCurrentLocation] = useState(false)
+  const [isMapInteracting, setIsMapInteracting] = useState(false)
+  const [isFullscreenMapVisible, setIsFullscreenMapVisible] = useState(false)
   const [volunteerFullnameInput, setVolunteerFullnameInput] = useState('')
   const [volunteerPhoneInput, setVolunteerPhoneInput] = useState('')
   const [savingVolunteerProfile, setSavingVolunteerProfile] = useState(false)
@@ -101,38 +103,21 @@ export default function Account() {
     ? (selectedCoordinates || savedVolunteerCoordinates)
     : savedVolunteerCoordinates
 
-  const previewRegion = previewCoordinates
-    ? {
-        latitude: previewCoordinates.latitude,
-        longitude: previewCoordinates.longitude,
-        latitudeDelta: 0.015,
-        longitudeDelta: 0.015,
-      }
-    : mapRegion
-
-  const setMapPin = useCallback((latitude, longitude, keepZoom = true, recenterEditor = false) => {
+  const setMapPin = useCallback((latitude, longitude, keepZoom = true) => {
     if (typeof latitude !== 'number' || typeof longitude !== 'number') return
 
-    let nextRegion = null
-
     setMapRegion((prev) => {
-      nextRegion = {
+      return {
         latitude,
         longitude,
         latitudeDelta: keepZoom ? (prev?.latitudeDelta || 0.02) : 0.02,
         longitudeDelta: keepZoom ? (prev?.longitudeDelta || 0.02) : 0.02,
       }
-
-      return nextRegion
     })
 
     const nextCoordinates = { latitude, longitude }
     selectedCoordinatesRef.current = nextCoordinates
     setSelectedCoordinates(nextCoordinates)
-
-    if (recenterEditor && editMapRef.current && nextRegion) {
-      editMapRef.current.animateToRegion(nextRegion, 250)
-    }
   }, [])
 
   const initializeFromVolunteerLocation = useCallback(() => {
@@ -161,7 +146,7 @@ export default function Account() {
         return
       }
 
-      setMapPin(latitude, longitude, false, true)
+      setMapPin(latitude, longitude, false)
     } catch (_error) {
       Alert.alert('Location error', 'Unable to fetch current location right now.')
     } finally {
@@ -173,6 +158,8 @@ export default function Account() {
   useEffect(() => {
     if (!volunteer?._id) {
       setEditingLocation(false)
+      setIsMapInteracting(false)
+      setIsFullscreenMapVisible(false)
       return
     }
 
@@ -188,11 +175,8 @@ export default function Account() {
   }, [volunteer?._id, volunteer?.fullname, volunteer?.phone, volunteerLatitude, volunteerLongitude, initializeFromVolunteerLocation, fetchCurrentLocationPin])
 
   const openLocationEditor = async () => {
-    if (!hasGoogleMapsApiKey) {
-      Alert.alert('Map setup required', 'Google Maps API key missing in this build. Add expo.android.config.googleMaps.apiKey in app.json and rebuild your Android dev app.')
-      return
-    }
-
+    setIsMapInteracting(false)
+    setIsFullscreenMapVisible(false)
     setEditingLocation(true)
 
     const hasVolunteerCoordinates = Number.isFinite(volunteerLatitude) && Number.isFinite(volunteerLongitude)
@@ -203,7 +187,7 @@ export default function Account() {
       return
     }
 
-    setMapPin(volunteerLatitude, volunteerLongitude, false, true)
+    setMapPin(volunteerLatitude, volunteerLongitude, false)
   }
 
   const saveVolunteerLocation = async () => {
@@ -240,6 +224,8 @@ export default function Account() {
 
       setMapPin(persistedCoordinates.latitude, persistedCoordinates.longitude, false)
       Alert.alert('Success', 'Your volunteer location has been updated.')
+      setIsMapInteracting(false)
+      setIsFullscreenMapVisible(false)
       setEditingLocation(false)
     } catch (error) {
       Alert.alert('Error', error?.message || 'Unable to update location')
@@ -340,23 +326,6 @@ export default function Account() {
   }
 
   const resolvedThemeLabel = resolvedTheme === 'dark' ? 'Dark' : 'Light'
-  const googleMapsApiKey = Constants?.expoConfig?.android?.config?.googleMaps?.apiKey
-  const normalizedGoogleMapsApiKey = typeof googleMapsApiKey === 'string' ? googleMapsApiKey.trim() : ''
-  const hasGoogleMapsApiKey = normalizedGoogleMapsApiKey.length > 0 && !normalizedGoogleMapsApiKey.startsWith('REPLACE_WITH_')
-
-  const mapKeyMissingCard = (
-    <View
-      className='border rounded-xl py-5 px-4 items-start'
-      style={{ borderColor: isDarkMode ? '#7f1d1d' : '#fecaca', backgroundColor: isDarkMode ? 'rgba(127, 29, 29, 0.28)' : '#fff1f2' }}
-    >
-      <Text className='text-xs font-bold tracking-widest uppercase' style={{ color: isDarkMode ? '#fecaca' : '#b91c1c' }}>
-        Map setup required
-      </Text>
-      <Text className='text-xs mt-2 leading-5' style={{ color: isDarkMode ? '#fecaca' : '#991b1b' }}>
-        Google Maps API key missing in this build. Add it in app.json at expo.android.config.googleMaps.apiKey, then rebuild your Android dev app.
-      </Text>
-    </View>
-  )
 
   const themeSelectorCard = (
     <View
@@ -420,6 +389,7 @@ export default function Account() {
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 52 }}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={!isMapInteracting}
         >
           <View className='mb-6 border rounded-2xl p-5' style={headerCardStyle}>
             <Text className='text-3xl font-black tracking-tight' style={{ color: headerTitleColor }}>Volunteer Account</Text>
@@ -483,29 +453,16 @@ export default function Account() {
                   <Text className='text-xs mb-2' style={{ color: softTextColor }}>Current availability location preview (500m area)</Text>
 
                   {
-                    !hasGoogleMapsApiKey ? (
-                      mapKeyMissingCard
-                    ) : savedVolunteerCoordinates ? (
-                      <MapView
-                        style={{ width: '100%', height: 200 }}
-                        region={previewRegion}
-                        scrollEnabled={false}
-                        zoomEnabled={false}
-                        rotateEnabled={false}
-                        pitchEnabled={false}
-                      >
-                        <Circle
-                          center={savedVolunteerCoordinates}
-                          radius={500}
-                          strokeWidth={2}
-                          strokeColor='rgba(59, 130, 246, 0.7)'
-                          fillColor='rgba(59, 130, 246, 0.18)'
-                        />
-                        <Marker
+                    savedVolunteerCoordinates ? (
+                      <View className='overflow-hidden rounded-xl'>
+                        <OpenStreetMapView
+                          height={200}
+                          center={previewCoordinates || mapRegion}
                           coordinate={savedVolunteerCoordinates}
-                          pinColor='red'
+                          radiusMeters={500}
+                          interactive={false}
                         />
-                      </MapView>
+                      </View>
                     ) : (
                       <View className='border rounded-xl py-8 items-center' style={{ borderColor: inputBorderColor, backgroundColor: inputBackgroundColor }}>
                         <Text className='text-xs' style={{ color: softTextColor }}>Location pin not available yet.</Text>
@@ -532,41 +489,21 @@ export default function Account() {
                     <View className='py-8 items-center'>
                       <EmergencyLoader size='small' label='Loading location editor' />
                     </View>
-                  ) : !hasGoogleMapsApiKey ? (
-                    mapKeyMissingCard
                   ) : (
-                    <MapView
-                      ref={editMapRef}
-                      style={{ width: '100%', height: 260 }}
-                      initialRegion={mapRegion}
-                      onPress={(event) => {
-                        const { latitude, longitude } = event.nativeEvent.coordinate
-                        setMapPin(latitude, longitude)
-                      }}
-                    >
-                      {
-                        selectedCoordinates ? (
-                          <>
-                            <Circle
-                              center={selectedCoordinates}
-                              radius={500}
-                              strokeWidth={2}
-                              strokeColor='rgba(59, 130, 246, 0.7)'
-                              fillColor='rgba(59, 130, 246, 0.18)'
-                            />
-                            <Marker
-                              coordinate={selectedCoordinates}
-                              draggable
-                              pinColor='red'
-                              onDragEnd={(event) => {
-                                const { latitude, longitude } = event.nativeEvent.coordinate
-                                setMapPin(latitude, longitude)
-                              }}
-                            />
-                          </>
-                        ) : null
-                      }
-                    </MapView>
+                    <View className='overflow-hidden rounded-xl'>
+                      <OpenStreetMapView
+                        height={260}
+                        center={mapRegion}
+                        coordinate={selectedCoordinates || mapRegion}
+                        radiusMeters={500}
+                        interactive
+                        draggable
+                        onMapInteractionChange={setIsMapInteracting}
+                        onCoordinateChange={({ latitude, longitude }) => {
+                          setMapPin(latitude, longitude)
+                        }}
+                      />
+                    </View>
                   )
                 }
 
@@ -579,6 +516,20 @@ export default function Account() {
                 >
                   <Text className='font-black text-xs tracking-widest uppercase' style={{ color: inputTextColor }}>
                     {refreshingCurrentLocation ? 'Fetching Location...' : 'Use Current Location'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className='mt-3 border rounded-xl py-3 items-center'
+                  style={secondaryButtonStyle}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    setIsMapInteracting(false)
+                    setIsFullscreenMapVisible(true)
+                  }}
+                >
+                  <Text className='font-black text-xs tracking-widest uppercase' style={{ color: inputTextColor }}>
+                    Open Fullscreen Map
                   </Text>
                 </TouchableOpacity>
 
@@ -599,6 +550,8 @@ export default function Account() {
                       if (savedVolunteerCoordinates) {
                         setMapPin(savedVolunteerCoordinates.latitude, savedVolunteerCoordinates.longitude, false)
                       }
+                      setIsMapInteracting(false)
+                      setIsFullscreenMapVisible(false)
                       setEditingLocation(false)
                     }}
                   >
@@ -629,6 +582,80 @@ export default function Account() {
             <Text className='font-black text-xs tracking-widest uppercase' style={{ color: topAccentColor }}>Volunteer Logout</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        <Modal
+          visible={isFullscreenMapVisible}
+          animationType='slide'
+          transparent={false}
+          onRequestClose={() => {
+            setIsMapInteracting(false)
+            setIsFullscreenMapVisible(false)
+          }}
+        >
+          <View className='flex-1' style={{ backgroundColor: pageBackgroundColor }}>
+            <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={pageBackgroundColor} />
+
+            <View className='flex-row items-center justify-between px-4 pt-12 pb-4'>
+              <Text className='text-sm font-black tracking-widest uppercase' style={{ color: headerTitleColor }}>
+                Fullscreen Map Editor
+              </Text>
+
+              <TouchableOpacity
+                className='border rounded-lg px-3 py-2'
+                style={secondaryButtonStyle}
+                activeOpacity={0.85}
+                onPress={() => {
+                  setIsMapInteracting(false)
+                  setIsFullscreenMapVisible(false)
+                }}
+              >
+                <Text className='text-xs font-black tracking-widest uppercase' style={{ color: inputTextColor }}>
+                  Close
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className='px-4'>
+              <View className='border rounded-2xl overflow-hidden' style={{ borderColor: inputBorderColor }}>
+                <OpenStreetMapView
+                  height={fullscreenMapHeight}
+                  center={selectedCoordinates || mapRegion}
+                  coordinate={selectedCoordinates || mapRegion}
+                  radiusMeters={500}
+                  interactive
+                  draggable
+                  onMapInteractionChange={setIsMapInteracting}
+                  onCoordinateChange={({ latitude, longitude }) => {
+                    setMapPin(latitude, longitude)
+                  }}
+                />
+              </View>
+
+              <TouchableOpacity
+                className='mt-4 border rounded-xl py-3 items-center'
+                style={secondaryButtonStyle}
+                activeOpacity={0.85}
+                disabled={refreshingCurrentLocation}
+                onPress={fetchCurrentLocationPin}
+              >
+                <Text className='font-black text-xs tracking-widest uppercase' style={{ color: inputTextColor }}>
+                  {refreshingCurrentLocation ? 'Fetching Location...' : 'Use Current Location'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className='mt-3 bg-red-600 rounded-xl py-3 items-center'
+                activeOpacity={0.85}
+                onPress={() => {
+                  setIsMapInteracting(false)
+                  setIsFullscreenMapVisible(false)
+                }}
+              >
+                <Text className='text-white font-black text-xs tracking-widest uppercase'>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         <View className='absolute bottom-0 left-0 right-0 h-1' style={{ backgroundColor: topAccentColor }} />
       </View>

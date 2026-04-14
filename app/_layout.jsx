@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import useUserBear from "../store/user.store";
@@ -10,6 +10,7 @@ import * as NavigationBar from "expo-navigation-bar";
 import Constants from "expo-constants";
 import { clearActiveAlertReminderNotification, syncActiveAlertReminderNotification } from "../libs/alertReminderNotification";
 import EmergencyLoader from "../components/common/EmergencyLoader";
+import SplashScreen from "../components/SplashScreen";
 import "../global.css";
 import { Platform, View, useColorScheme } from "react-native";
 
@@ -31,6 +32,7 @@ export default function RootLayout() {
   const rootNavigationState = useRootNavigationState();
   const systemColorScheme = useColorScheme();
   const lastAuthRedirectRef = useRef(null);
+  const [showIntroSplash, setShowIntroSplash] = useState(true);
 
   const resolvedTheme = themePreference === "system"
     ? (systemColorScheme === "dark" ? "dark" : "light")
@@ -187,7 +189,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Don't attempt navigation until the root navigator has mounted
-    if (!rootNavigationState?.key || userLoader || volunteerLoader) return;
+    if (showIntroSplash || !rootNavigationState?.key || userLoader || volunteerLoader) return;
 
     const isAuthenticated = Boolean(user?._id || volunteer?._id);
     const isInAppGroup = segments?.[0] === "(app)";
@@ -209,13 +211,15 @@ export default function RootLayout() {
 
     lastAuthRedirectRef.current = targetRoute;
     routes.replace(targetRoute);
-  }, [routes, segments, user?._id, volunteer?._id, userLoader, volunteerLoader, rootNavigationState?.key]);
+  }, [routes, segments, user?._id, volunteer?._id, userLoader, volunteerLoader, rootNavigationState?.key, showIntroSplash]);
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: appBackgroundColor }}>
         {
-          (userLoader || volunteerLoader) ? (
+          showIntroSplash ? (
+            <SplashScreen onFinish={() => setShowIntroSplash(false)} />
+          ) : (userLoader || volunteerLoader) ? (
             <View style={{ flex: 1, backgroundColor: appBackgroundColor }}>
               <EmergencyLoader
                 fullScreen

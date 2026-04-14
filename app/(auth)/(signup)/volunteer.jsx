@@ -1,12 +1,12 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, Image, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ActivityIndicator, useColorScheme } from 'react-native'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, Image, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Modal, useColorScheme, useWindowDimensions } from 'react-native'
+import React, { useCallback, useEffect, useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import * as Location from 'expo-location'
-import MapView, { Circle, Marker } from 'react-native-maps'
 import IonIcons from "@expo/vector-icons/Ionicons"
 import { Link } from 'expo-router'
 import useVolunteerBear from '../../../store/volunteer.store'
 import EmergencyLoader from '../../../components/common/EmergencyLoader'
+import OpenStreetMapView from '../../../components/common/OpenStreetMapView'
 import useThemeBear from '../../../store/theme.store'
 
 export default function Volunteer() {
@@ -21,10 +21,12 @@ export default function Volunteer() {
   const [applying, setApplying] = useState(false)
   const [selectedCoordinates, setSelectedCoordinates] = useState(null)
   const [mapRegion, setMapRegion] = useState(null)
-  const signupMapRef = useRef(null)
   const [mapLoader, setMapLoader] = useState(true)
   const [refreshingCurrentLocation, setRefreshingCurrentLocation] = useState(false)
+  const [isMapInteracting, setIsMapInteracting] = useState(false)
+  const [isFullscreenMapVisible, setIsFullscreenMapVisible] = useState(false)
   const { themePreference } = useThemeBear((state) => state)
+  const { height: windowHeight } = useWindowDimensions()
   const systemColorScheme = useColorScheme()
 
   const resolvedTheme = themePreference === 'system'
@@ -47,29 +49,22 @@ export default function Volunteer() {
     placeholder: isDarkMode ? '#64748b' : '#9ca3af',
     disabledPrimary: isDarkMode ? '#475569' : '#fca5a5',
   }
+  const fullscreenMapHeight = Math.max(360, windowHeight - 220)
   const {applyVolunteer} = useVolunteerBear(state=>state);
 
-  const setMapPin = useCallback((latitude, longitude, keepZoom = true, recenterMap = false) => {
+  const setMapPin = useCallback((latitude, longitude, keepZoom = true) => {
     if (typeof latitude !== 'number' || typeof longitude !== 'number') return
 
-    let nextRegion = null
-
     setMapRegion((prev) => {
-      nextRegion = {
+      return {
         latitude,
         longitude,
         latitudeDelta: keepZoom ? (prev?.latitudeDelta || 0.02) : 0.02,
         longitudeDelta: keepZoom ? (prev?.longitudeDelta || 0.02) : 0.02,
       }
-
-      return nextRegion
     })
 
     setSelectedCoordinates({ latitude, longitude })
-
-    if (recenterMap && signupMapRef.current && nextRegion) {
-      signupMapRef.current.animateToRegion(nextRegion, 250)
-    }
   }, [])
 
   const pickCurrentLocationForMap = useCallback(async () => {
@@ -91,7 +86,7 @@ export default function Volunteer() {
         return
       }
 
-      setMapPin(latitude, longitude, false, true)
+      setMapPin(latitude, longitude, false)
     } catch (_error) {
       Alert.alert('Location error', 'Unable to fetch current location right now.')
     } finally {
@@ -184,6 +179,7 @@ export default function Volunteer() {
             contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingVertical: 52 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps='handled'
+            scrollEnabled={!isMapInteracting}
           >
             <View className='mb-6 border rounded-2xl p-5' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
               <Text className='text-4xl font-black tracking-tight leading-none' style={{ color: colors.text }}>
@@ -349,40 +345,18 @@ export default function Volunteer() {
                   </View>
                 ) : (
                   <View className='border rounded-2xl overflow-hidden' style={{ borderColor: colors.inputBorder }}>
-                    <MapView
-                      ref={signupMapRef}
-                      style={{ width: '100%', height: 250 }}
-                      initialRegion={mapRegion}
-                      onPress={(event) => {
-                        const { latitude, longitude } = event.nativeEvent.coordinate
+                    <OpenStreetMapView
+                      height={250}
+                      center={mapRegion}
+                      coordinate={selectedCoordinates || mapRegion}
+                      radiusMeters={500}
+                      interactive
+                      draggable
+                      onMapInteractionChange={setIsMapInteracting}
+                      onCoordinateChange={({ latitude, longitude }) => {
                         setMapPin(latitude, longitude)
                       }}
-                    >
-                      {
-                        selectedCoordinates ? (
-                          <>
-                            <Circle
-                              center={selectedCoordinates}
-                              radius={500}
-                              strokeWidth={2}
-                              strokeColor='rgba(59, 130, 246, 0.7)'
-                              fillColor='rgba(59, 130, 246, 0.18)'
-                            />
-                            <Marker
-                              coordinate={selectedCoordinates}
-                              draggable
-                              pinColor='red'
-                              title='Your Availability Pin'
-                              description='Drag pin to update your location'
-                              onDragEnd={(event) => {
-                                const { latitude, longitude } = event.nativeEvent.coordinate
-                                setMapPin(latitude, longitude)
-                              }}
-                            />
-                          </>
-                        ) : null
-                      }
-                    </MapView>
+                    />
                   </View>
                 )
               }
@@ -398,6 +372,24 @@ export default function Volunteer() {
                   {refreshingCurrentLocation ? 'Fetching Location...' : 'Use My Current Location'}
                 </Text>
               </TouchableOpacity>
+
+              {
+                mapRegion ? (
+                  <TouchableOpacity
+                    className='mt-3 border rounded-xl py-3 items-center'
+                    style={{ borderColor: colors.inputBorder, backgroundColor: colors.inputBg }}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      setIsMapInteracting(false)
+                      setIsFullscreenMapVisible(true)
+                    }}
+                  >
+                    <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.text }}>
+                      Open Fullscreen Map
+                    </Text>
+                  </TouchableOpacity>
+                ) : null
+              }
 
               {
                 selectedCoordinates ? (
@@ -433,6 +425,80 @@ export default function Volunteer() {
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={isFullscreenMapVisible}
+        animationType='slide'
+        transparent={false}
+        onRequestClose={() => {
+          setIsMapInteracting(false)
+          setIsFullscreenMapVisible(false)
+        }}
+      >
+        <View className='flex-1' style={{ backgroundColor: colors.page }}>
+          <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={colors.page} />
+
+          <View className='flex-row items-center justify-between px-4 pt-12 pb-4'>
+            <Text className='text-sm font-black tracking-widest uppercase' style={{ color: colors.text }}>
+              Fullscreen Map Editor
+            </Text>
+
+            <TouchableOpacity
+              className='border rounded-lg px-3 py-2'
+              style={{ borderColor: colors.inputBorder, backgroundColor: colors.inputBg }}
+              activeOpacity={0.85}
+              onPress={() => {
+                setIsMapInteracting(false)
+                setIsFullscreenMapVisible(false)
+              }}
+            >
+              <Text className='text-xs font-black tracking-widest uppercase' style={{ color: colors.text }}>
+                Close
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className='px-4'>
+            <View className='border rounded-2xl overflow-hidden' style={{ borderColor: colors.inputBorder }}>
+              <OpenStreetMapView
+                height={fullscreenMapHeight}
+                center={selectedCoordinates || mapRegion}
+                coordinate={selectedCoordinates || mapRegion}
+                radiusMeters={500}
+                interactive
+                draggable
+                onMapInteractionChange={setIsMapInteracting}
+                onCoordinateChange={({ latitude, longitude }) => {
+                  setMapPin(latitude, longitude)
+                }}
+              />
+            </View>
+
+            <TouchableOpacity
+              className='mt-4 border rounded-xl py-3 items-center'
+              style={{ borderColor: colors.accent, backgroundColor: colors.accentSoftBg }}
+              activeOpacity={0.85}
+              disabled={refreshingCurrentLocation}
+              onPress={pickCurrentLocationForMap}
+            >
+              <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.accent }}>
+                {refreshingCurrentLocation ? 'Fetching Location...' : 'Use My Current Location'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className='mt-3 bg-red-600 rounded-xl py-3 items-center'
+              activeOpacity={0.85}
+              onPress={() => {
+                setIsMapInteracting(false)
+                setIsFullscreenMapVisible(false)
+              }}
+            >
+              <Text className='text-white font-black text-xs tracking-widest uppercase'>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <View className='absolute bottom-0 left-0 right-0 h-1' style={{ backgroundColor: colors.accent }} />
     </View>

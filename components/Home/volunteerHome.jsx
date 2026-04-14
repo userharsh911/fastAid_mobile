@@ -1,6 +1,7 @@
-import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, ActivityIndicator, useColorScheme } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, ActivityIndicator, useColorScheme, Image } from 'react-native'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
+import ImageView from 'react-native-image-viewing'
 import useVolunteerBear from '../../store/volunteer.store'
 import useThemeBear from '../../store/theme.store'
 import EmergencyLoader from '../common/EmergencyLoader'
@@ -50,6 +51,8 @@ export default function VolunteerHome() {
   const [refreshingAlerts, setRefreshingAlerts] = useState(false)
   const [processingAlertId, setProcessingAlertId] = useState(null)
   const [processingActionType, setProcessingActionType] = useState(null)
+  const [viewerImageUrl, setViewerImageUrl] = useState(null)
+  const [viewerVisible, setViewerVisible] = useState(false)
 
   const {
     volunteer,
@@ -175,8 +178,16 @@ export default function VolunteerHome() {
     const userName = alertItem?.user_id?.fullname || alertItem?.user_id?.email || 'User'
     const phone = alertItem?.user_id?.phone || ''
     const description = alertItem?.description || ''
+    const imageUrl = alertItem?.image?.url || ''
 
-    routes.push(`/(app)/(tabs)/(home)/alertMap?lat=${latitude}&lng=${longitude}&name=${encodeURIComponent(userName)}&phone=${encodeURIComponent(String(phone))}&description=${encodeURIComponent(description)}&alertId=${alertItem?._id}`)
+    routes.push(`/(app)/(tabs)/(home)/alertMap?lat=${latitude}&lng=${longitude}&name=${encodeURIComponent(userName)}&phone=${encodeURIComponent(String(phone))}&description=${encodeURIComponent(description)}&alertId=${alertItem?._id}&imageUrl=${encodeURIComponent(imageUrl)}`)
+  }
+
+  const openAlertImageViewer = (imageUrl) => {
+    if (!imageUrl) return
+
+    setViewerImageUrl(imageUrl)
+    setViewerVisible(true)
   }
 
   return (
@@ -254,6 +265,28 @@ export default function VolunteerHome() {
                   Lat: {typeof latitude === 'number' ? latitude.toFixed(6) : 'N/A'} | Lng: {typeof longitude === 'number' ? longitude.toFixed(6) : 'N/A'}
                 </Text>
 
+                {
+                  alertItem?.image?.url ? (
+                    <TouchableOpacity
+                      className='mt-3 overflow-hidden rounded-xl border'
+                      style={{ borderColor: colors.border, backgroundColor: colors.neutralSurface }}
+                      activeOpacity={0.85}
+                      onPress={() => openAlertImageViewer(alertItem.image.url)}
+                    >
+                      <Image
+                        source={{ uri: alertItem.image.url }}
+                        style={{ width: '100%', height: 170 }}
+                        resizeMode='cover'
+                      />
+                      <View className='px-3 py-2' style={{ backgroundColor: colors.surface }}>
+                        <Text className='text-xs font-black tracking-widest uppercase' style={{ color: colors.accent }}>
+                          Tap to view full image
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : null
+                }
+
                 <View className='flex-row gap-3 mt-4'>
                   <TouchableOpacity
                     className='flex-1 border rounded-xl py-3 items-center'
@@ -311,6 +344,13 @@ export default function VolunteerHome() {
           })
         )}
       </ScrollView>
+
+      <ImageView
+        images={viewerImageUrl ? [{ uri: viewerImageUrl }] : []}
+        imageIndex={0}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+      />
 
       <View className='absolute bottom-0 left-0 right-0 h-1' style={{ backgroundColor: colors.accent }} />
     </View>

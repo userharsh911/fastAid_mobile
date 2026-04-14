@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, Linking, Alert, ScrollView, ActivityIndicator, useColorScheme } from 'react-native'
 import React, { useState } from 'react'
 import { useRouter } from 'expo-router'
-import MapView, { Marker } from 'react-native-maps'
+import OpenStreetMapView from '../../../../components/common/OpenStreetMapView'
 import useUserBear from '../../../../store/user.store'
 import useThemeBear from '../../../../store/theme.store'
 
@@ -46,10 +46,35 @@ export default function HireVolunteer() {
 
   const openInMapsHandler = async () => {
     if (!hasCoordinates) return
-    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
-    const canOpen = await Linking.canOpenURL(mapUrl)
-    if (canOpen) {
-      Linking.openURL(mapUrl)
+
+    const googleAppUrl = `comgooglemaps://?q=${latitude},${longitude}`
+    const googleWebUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+
+    const canOpenGoogleApp = await Linking.canOpenURL(googleAppUrl)
+    if (canOpenGoogleApp) {
+      Linking.openURL(googleAppUrl)
+      return
+    }
+
+    const canOpenGoogleWeb = await Linking.canOpenURL(googleWebUrl)
+    if (canOpenGoogleWeb) {
+      Linking.openURL(googleWebUrl)
+      return
+    }
+
+    const mapLabel = encodeURIComponent('Volunteer Location')
+    const nativeMapUrl = `geo:${latitude},${longitude}?q=${latitude},${longitude}(${mapLabel})`
+    const fallbackMapUrl = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=16/${latitude}/${longitude}`
+
+    const canOpenNativeMap = await Linking.canOpenURL(nativeMapUrl)
+    if (canOpenNativeMap) {
+      Linking.openURL(nativeMapUrl)
+      return
+    }
+
+    const canOpenFallback = await Linking.canOpenURL(fallbackMapUrl)
+    if (canOpenFallback) {
+      Linking.openURL(fallbackMapUrl)
     }
   }
 
@@ -136,21 +161,14 @@ export default function HireVolunteer() {
       <View className='px-6 mt-4'>
         {
           hasCoordinates ? (
-            <MapView
-              style={{ width: '100%', height: 280, borderRadius: 16 }}
-              initialRegion={{
-                latitude,
-                longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-            >
-              <Marker
+            <View className='overflow-hidden rounded-2xl'>
+              <OpenStreetMapView
+                height={280}
+                center={{ latitude, longitude }}
                 coordinate={{ latitude, longitude }}
-                title='Volunteer Location'
-                description={selectedVolunteer?.email || 'Nearby Volunteer'}
+                interactive={false}
               />
-            </MapView>
+            </View>
           ) : (
             <View className='border rounded-2xl py-10 px-4 items-center' style={{ borderColor: colors.border, backgroundColor: colors.surface }}>
               <Text className='text-sm' style={{ color: colors.textSoft }}>Location is not available for this volunteer.</Text>
@@ -174,7 +192,7 @@ export default function HireVolunteer() {
           activeOpacity={0.85}
           onPress={openInMapsHandler}
         >
-          <Text className='text-white font-black text-xs tracking-widest uppercase'>Open in Maps</Text>
+          <Text className='text-white font-black text-xs tracking-widest uppercase'>Open Google Maps</Text>
         </TouchableOpacity>
       </View>
 

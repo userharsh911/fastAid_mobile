@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1040860133312",
+    "project_id": "fastaid-e0876",
+    "storage_bucket": "fastaid-e0876.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040860133312:android:7cfce5d0e76e01a1aa7a25",
+        "android_client_info": {
+          "package_name": "com.userharsh911.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCE8XPrpRDDktwmoLARcwlIJOHrTAEk658"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

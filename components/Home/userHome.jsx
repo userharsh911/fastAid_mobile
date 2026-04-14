@@ -57,7 +57,16 @@ export default function UserHome({ user }) {
       quality: 0.8,
     })
 
-    if (!result.canceled) setImage(result.assets[0].uri)
+    if (!result.canceled) {
+      const selectedAsset = result.assets?.[0]
+      if (selectedAsset?.uri) {
+        setImage({
+          uri: selectedAsset.uri,
+          fileName: selectedAsset.fileName,
+          mimeType: selectedAsset.mimeType,
+        })
+      }
+    }
   }
 
   const takePhoto = async () => {
@@ -70,7 +79,16 @@ export default function UserHome({ user }) {
       quality: 0.8,
     })
 
-    if (!result.canceled) setImage(result.assets[0].uri)
+    if (!result.canceled) {
+      const selectedAsset = result.assets?.[0]
+      if (selectedAsset?.uri) {
+        setImage({
+          uri: selectedAsset.uri,
+          fileName: selectedAsset.fileName,
+          mimeType: selectedAsset.mimeType,
+        })
+      }
+    }
   }
 
   const sendAlertHandler = async () => {
@@ -105,6 +123,7 @@ export default function UserHome({ user }) {
       const response = await createAlert({
         description: description.trim() || undefined,
         coordinates: { latitude, longitude },
+        image: image || undefined,
       })
 
       if (response?.success) {
@@ -194,7 +213,7 @@ export default function UserHome({ user }) {
             {image ? (
               <View className='relative'>
                 <Image
-                  source={{ uri: image }}
+                  source={{ uri: image?.uri }}
                   className='w-full h-44 rounded-sm'
                   style={{ borderWidth: 2, borderColor: colors.accent, borderRadius: 16 }}
                   resizeMode='cover'

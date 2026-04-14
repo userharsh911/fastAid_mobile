@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react'
-import { View, Text, TouchableOpacity, Linking, ScrollView, useColorScheme } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, TouchableOpacity, Linking, ScrollView, useColorScheme, Image } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import MapView, { Marker } from 'react-native-maps'
+import ImageView from 'react-native-image-viewing'
+import OpenStreetMapView from '../../../../components/common/OpenStreetMapView'
 import useVolunteerBear from '../../../../store/volunteer.store'
 import useThemeBear from '../../../../store/theme.store'
 
@@ -25,9 +26,10 @@ const formatTimestamp = (value) => {
 
 export default function AlertMap() {
   const routes = useRouter()
-  const { lat, lng, name, phone, description, alertId } = useLocalSearchParams()
+  const { lat, lng, name, phone, description, alertId, imageUrl } = useLocalSearchParams()
   const { themePreference } = useThemeBear((state) => state)
   const systemColorScheme = useColorScheme()
+  const [viewerVisible, setViewerVisible] = useState(false)
 
   const resolvedTheme = themePreference === 'system'
     ? (systemColorScheme === 'dark' ? 'dark' : 'light')
@@ -64,22 +66,12 @@ export default function AlertMap() {
   const resolvedName = liveAlert?.user_id?.fullname || liveAlert?.user_id?.email || getFirstParamValue(name) || 'User'
   const resolvedPhone = liveAlert?.user_id?.phone || getFirstParamValue(phone) || ''
   const resolvedDescription = liveAlert?.description || getFirstParamValue(description) || ''
+  const resolvedImageUrl = liveAlert?.image?.url || getFirstParamValue(imageUrl) || ''
   const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude)
 
   const volunteerLatitude = volunteer?.location?.coordinates?.[1]
   const volunteerLongitude = volunteer?.location?.coordinates?.[0]
   const hasVolunteerCoordinates = Number.isFinite(volunteerLatitude) && Number.isFinite(volunteerLongitude)
-
-  const mapRegion = useMemo(() => {
-    if (!hasCoordinates) return null
-
-    return {
-      latitude,
-      longitude,
-      latitudeDelta: 0.008,
-      longitudeDelta: 0.008,
-    }
-  }, [hasCoordinates, latitude, longitude])
 
   const locationUpdatedAt = formatTimestamp(liveAlert?.updatedAt || liveAlert?.createdAt)
 
@@ -96,15 +88,40 @@ export default function AlertMap() {
   const openDirectionsInMaps = async () => {
     if (!hasCoordinates) return
 
-    const destination = `${latitude},${longitude}`
-    const origin = hasVolunteerCoordinates
-      ? `&origin=${volunteerLatitude},${volunteerLongitude}`
-      : ''
+    const googleAppUrl = hasVolunteerCoordinates
+      ? `comgooglemaps://?saddr=${volunteerLatitude},${volunteerLongitude}&daddr=${latitude},${longitude}&directionsmode=driving`
+      : `comgooglemaps://?daddr=${latitude},${longitude}&directionsmode=driving`
+    const googleWebUrl = hasVolunteerCoordinates
+      ? `https://www.google.com/maps/dir/?api=1&origin=${volunteerLatitude},${volunteerLongitude}&destination=${latitude},${longitude}&travelmode=driving`
+      : `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`
 
-    const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}${origin}&travelmode=driving`
-    const canOpen = await Linking.canOpenURL(mapUrl)
-    if (canOpen) {
-      Linking.openURL(mapUrl)
+    const canOpenGoogleApp = await Linking.canOpenURL(googleAppUrl)
+    if (canOpenGoogleApp) {
+      Linking.openURL(googleAppUrl)
+      return
+    }
+
+    const canOpenGoogleWeb = await Linking.canOpenURL(googleWebUrl)
+    if (canOpenGoogleWeb) {
+      Linking.openURL(googleWebUrl)
+      return
+    }
+
+    const mapLabel = encodeURIComponent('Emergency Location')
+    const nativeMapUrl = `geo:${latitude},${longitude}?q=${latitude},${longitude}(${mapLabel})`
+    const fallbackDirectionUrl = hasVolunteerCoordinates
+      ? `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${volunteerLatitude}%2C${volunteerLongitude}%3B${latitude}%2C${longitude}`
+      : `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=16/${latitude}/${longitude}`
+
+    const canOpenNativeMap = await Linking.canOpenURL(nativeMapUrl)
+    if (canOpenNativeMap) {
+      Linking.openURL(nativeMapUrl)
+      return
+    }
+
+    const canOpenFallback = await Linking.canOpenURL(fallbackDirectionUrl)
+    if (canOpenFallback) {
+      Linking.openURL(fallbackDirectionUrl)
     }
   }
 
@@ -162,16 +179,14 @@ export default function AlertMap() {
       <View className='px-6 mt-4'>
         {
           hasCoordinates ? (
-            <MapView
-              style={{ width: '100%', height: 300, borderRadius: 16 }}
-              region={mapRegion}
-            >
-              <Marker
+            <View className='overflow-hidden rounded-2xl'>
+              <OpenStreetMapView
+                height={300}
+                center={{ latitude, longitude }}
                 coordinate={{ latitude, longitude }}
-                title={resolvedName}
-                description='Emergency location'
+                interactive={false}
               />
-            </MapView>
+            </View>
           ) : (
             <View className='border rounded-2xl py-10 px-4 items-center' style={{ borderColor: colors.border, backgroundColor: colors.surface }}>
               <Text className='text-sm' style={{ color: colors.textSoft }}>Location is not available for this alert.</Text>
@@ -179,6 +194,30 @@ export default function AlertMap() {
           )
         }
       </View>
+
+      {
+        resolvedImageUrl ? (
+          <View className='px-6 mt-4'>
+            <TouchableOpacity
+              className='overflow-hidden rounded-2xl border'
+              style={{ borderColor: colors.border, backgroundColor: colors.surface }}
+              activeOpacity={0.85}
+              onPress={() => setViewerVisible(true)}
+            >
+              <Image
+                source={{ uri: resolvedImageUrl }}
+                style={{ width: '100%', height: 210 }}
+                resizeMode='cover'
+              />
+              <View className='px-4 py-3'>
+                <Text className='text-xs font-black tracking-widest uppercase' style={{ color: colors.accent }}>
+                  View Full Image (Zoom)
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        ) : null
+      }
 
       <View className='px-6 mt-4 flex-row gap-3'>
         <TouchableOpacity
@@ -195,7 +234,7 @@ export default function AlertMap() {
           activeOpacity={0.85}
           onPress={openDirectionsInMaps}
         >
-          <Text className='text-white font-black text-xs tracking-widest uppercase'>Open Directions</Text>
+          <Text className='text-white font-black text-xs tracking-widest uppercase'>Open Google Maps</Text>
         </TouchableOpacity>
       </View>
 
@@ -209,6 +248,13 @@ export default function AlertMap() {
       </TouchableOpacity>
 
       </ScrollView>
+
+      <ImageView
+        images={resolvedImageUrl ? [{ uri: resolvedImageUrl }] : []}
+        imageIndex={0}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+      />
 
       <View className='absolute bottom-0 left-0 right-0 h-1' style={{ backgroundColor: colors.accent }} />
     </View>

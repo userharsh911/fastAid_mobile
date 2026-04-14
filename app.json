@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "FastAid",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "fastaid",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -22,11 +22,7 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDxZKKorOWkdXg-nBJ4A5UJ0a0UYWDLyPI"
-        }
-      },
+      "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.userharsh911.mobile"

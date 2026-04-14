@@ -131,6 +131,7 @@ const useUserBear = create((set, get)=>({
 
             const payload = {...data};
             let endpoint = '/alert/create';
+            const hasImageAttachment = Boolean(data?.image?.uri);
 
             if(userToken){
                 endpoint = `/alert/create/${userToken}`;
@@ -142,7 +143,41 @@ const useUserBear = create((set, get)=>({
                 }
             }
 
-            const response = await userInstance.post(endpoint,payload);
+            let response;
+
+            if (hasImageAttachment) {
+                const formData = new FormData();
+
+                if (data?.description) {
+                    formData.append('description', String(data.description));
+                }
+
+                if (data?.coordinates) {
+                    formData.append('coordinates', JSON.stringify(data.coordinates));
+                }
+
+                if (payload?.as_guest) {
+                    formData.append('as_guest', String(payload.as_guest));
+                }
+
+                const imageName = data?.image?.fileName || `alert_${Date.now()}.jpg`;
+                const imageMimeType = data?.image?.mimeType || 'image/jpeg';
+
+                formData.append('image', {
+                    uri: data.image.uri,
+                    name: imageName,
+                    type: imageMimeType,
+                });
+
+                response = await userInstance.post(endpoint, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+            } else {
+                response = await userInstance.post(endpoint,payload);
+            }
+
             const alertId = response.data?.alert?._id;
 
             if (alertId) {
