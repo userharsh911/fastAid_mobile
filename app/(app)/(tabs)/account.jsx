@@ -403,6 +403,24 @@ export default function Account() {
             <Text className='text-sm' style={{ color: surfaceTextColor }}>Email: {volunteer?.email || 'N/A'}</Text>
             <Text className='text-sm mt-1' style={{ color: surfaceTextColor }}>Phone: {volunteer?.phone || 'N/A'}</Text>
             <Text className='text-sm mt-1' style={{ color: surfaceTextColor }}>Mode: {volunteer?.mode || 'N/A'}</Text>
+            <View
+              className='self-start mt-3 border rounded-full px-3 py-1.5'
+              style={{
+                borderColor: volunteer?.isverified
+                  ? (isDarkMode ? 'rgba(34, 197, 94, 0.45)' : '#86efac')
+                  : (isDarkMode ? 'rgba(251, 191, 36, 0.45)' : '#fcd34d'),
+                backgroundColor: volunteer?.isverified
+                  ? (isDarkMode ? 'rgba(34, 197, 94, 0.18)' : '#dcfce7')
+                  : (isDarkMode ? 'rgba(251, 191, 36, 0.18)' : '#fef3c7'),
+              }}
+            >
+              <Text
+                className='text-[11px] font-black tracking-widest uppercase'
+                style={{ color: volunteer?.isverified ? (isDarkMode ? '#86efac' : '#15803d') : (isDarkMode ? '#fcd34d' : '#a16207') }}
+              >
+                {volunteer?.isverified ? 'Verified' : 'Pending Verification'}
+              </Text>
+            </View>
             {
               savedVolunteerCoordinates ? (
                 <Text className='text-xs mt-2' style={{ color: softTextColor }}>

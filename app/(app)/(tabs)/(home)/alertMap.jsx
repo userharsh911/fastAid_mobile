@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, TouchableOpacity, Linking, ScrollView, useColorScheme, Image } from 'react-native'
+import { View, Text, TouchableOpacity, Linking, ScrollView, useColorScheme, Image, Alert } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import ImageView from 'react-native-image-viewing'
 import OpenStreetMapView from '../../../../components/common/OpenStreetMapView'
@@ -14,6 +14,36 @@ const getFirstParamValue = (value) => {
 const parseCoordinate = (value) => {
   const numericValue = Number(getFirstParamValue(value))
   return Number.isFinite(numericValue) ? numericValue : null
+}
+
+const decodeParamPhone = (value) => {
+  const rawValue = getFirstParamValue(value)
+  if (rawValue === null || rawValue === undefined) return ''
+
+  const stringValue = String(rawValue).trim()
+  if (!stringValue) return ''
+
+  try {
+    return decodeURIComponent(stringValue)
+  } catch {
+    return stringValue
+  }
+}
+
+const normalizePhoneForDialer = (phoneValue) => {
+  if (phoneValue === null || phoneValue === undefined) return ''
+
+  const rawValue = String(phoneValue).trim()
+  if (!rawValue) return ''
+
+  const cleanedValue = rawValue.replace(/[^\d+]/g, '')
+  if (!cleanedValue) return ''
+
+  if (cleanedValue.startsWith('+')) {
+    return `+${cleanedValue.slice(1).replace(/\+/g, '')}`
+  }
+
+  return cleanedValue.replace(/\+/g, '')
 }
 
 const formatTimestamp = (value) => {
@@ -64,7 +94,7 @@ export default function AlertMap() {
   const longitude = Number.isFinite(liveLongitude) ? liveLongitude : parseCoordinate(lng)
 
   const resolvedName = liveAlert?.user_id?.fullname || liveAlert?.user_id?.email || getFirstParamValue(name) || 'User'
-  const resolvedPhone = liveAlert?.user_id?.phone || getFirstParamValue(phone) || ''
+  const resolvedPhone = liveAlert?.user_id?.phone || decodeParamPhone(phone) || ''
   const resolvedDescription = liveAlert?.description || getFirstParamValue(description) || ''
   const resolvedImageUrl = liveAlert?.image?.url || getFirstParamValue(imageUrl) || ''
   const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude)
@@ -76,12 +106,18 @@ export default function AlertMap() {
   const locationUpdatedAt = formatTimestamp(liveAlert?.updatedAt || liveAlert?.createdAt)
 
   const callUser = async () => {
-    if (!resolvedPhone) return
+    const normalizedPhone = normalizePhoneForDialer(resolvedPhone)
+    if (!normalizedPhone) {
+      Alert.alert('Phone unavailable', 'User phone number is not valid.')
+      return
+    }
 
-    const phoneUrl = `tel:${resolvedPhone}`
-    const canOpen = await Linking.canOpenURL(phoneUrl)
-    if (canOpen) {
-      Linking.openURL(phoneUrl)
+    const phoneUrl = `tel:${normalizedPhone}`
+
+    try {
+      await Linking.openURL(phoneUrl)
+    } catch {
+      Alert.alert('Call failed', 'Unable to open phone dialer right now.')
     }
   }
 

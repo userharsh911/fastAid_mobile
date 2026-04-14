@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Animated, useColorScheme } from 'react-native'
+﻿import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Animated, Alert, useColorScheme } from 'react-native'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'expo-router'
 import useUserBear from '../../../store/user.store'
@@ -290,7 +290,7 @@ export default function History() {
 
       await getAlertHistory(true)
     } catch (error) {
-      console.log('error while refreshing history ', error)
+      Alert.alert('Error', 'Unable to refresh history right now.')
     }
   }
 
@@ -304,7 +304,7 @@ export default function History() {
         routes.push('/(app)/(tabs)/(home)/sendedAlert')
       }
     } catch (error) {
-      console.log('error while opening alert tracker ', error)
+      Alert.alert('Error', 'Unable to open alert tracker right now.')
     } finally {
       setTrackingAlertId(null)
     }

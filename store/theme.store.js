@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const THEME_PREFERENCE_KEY = "themePreference";
@@ -29,7 +29,6 @@ const useThemeBear = create((set) => ({
         themeHydrated: true,
       });
     } catch (error) {
-      console.log("error while loading theme preference ", error);
       set({ themeHydrated: true });
     }
   },
@@ -43,7 +42,6 @@ const useThemeBear = create((set) => ({
       await AsyncStorage.setItem(THEME_PREFERENCE_KEY, normalizedPreference);
       return { success: true, themePreference: normalizedPreference };
     } catch (error) {
-      console.log("error while setting theme preference ", error);
       return { success: false, message: "Unable to save theme preference" };
     }
   },

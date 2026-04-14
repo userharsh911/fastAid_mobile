@@ -1,4 +1,4 @@
-import {create} from "zustand"
+﻿import {create} from "zustand"
 import volunteerInstance from "../api/volunteer.api";
 import userInstance from "../api/user.api";
 import * as SecureStore from 'expo-secure-store';
@@ -36,13 +36,43 @@ const useVolunteerBear = create((set, get)=>({
     volunteerHistoryLoader:false,
     applyVolunteer: async(data)=>{
         try {
-            const response = await volunteerInstance.post('/auth/apply',data);
+            const hasDocument = Boolean(data?.document?.uri);
+
+            let response;
+            if (hasDocument) {
+                const formData = new FormData();
+                formData.append('fullname', String(data?.fullname || ''));
+                formData.append('email', String(data?.email || ''));
+                formData.append('password', String(data?.password || ''));
+                formData.append('phone', String(data?.phone || ''));
+
+                if (data?.coordinates) {
+                    formData.append('coordinates', JSON.stringify(data.coordinates));
+                }
+
+                const documentName = data?.document?.name || `volunteer_doc_${Date.now()}`;
+                const documentMimeType = data?.document?.mimeType || 'application/octet-stream';
+
+                formData.append('document', {
+                    uri: data.document.uri,
+                    name: documentName,
+                    type: documentMimeType,
+                });
+
+                response = await volunteerInstance.post('/auth/apply', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+            } else {
+                response = await volunteerInstance.post('/auth/apply', data);
+            }
+
             set({volunteer:response.data.volunteer});
             set({voluteerToken:response.data.token});
             await SecureStore.setItemAsync("volunteerToken",response.data.token);
             return response.data;
         } catch (error) {
-            console.log("error while applying as volunteer ",error);
             throw error.response?.data;
         }
     },
@@ -54,7 +84,6 @@ const useVolunteerBear = create((set, get)=>({
             await SecureStore.setItemAsync("volunteerToken",response.data.token);
             return response.data;
         } catch (error) {
-            console.log("error while logging as volunteer ",error);
             throw error.response?.data;
         }
     },
@@ -64,13 +93,11 @@ const useVolunteerBear = create((set, get)=>({
                 set({volunteerLoader:true});
             }
             const volunteerToken = await SecureStore.getItemAsync("volunteerToken");
-            console.log("token vol ",volunteerToken);
             if(volunteerToken){
                 const response = await volunteerInstance.get(`/auth/${volunteerToken}`);
                 set({volunteer:response.data.volunteer});
             }
         } catch (error) {
-            console.log("error while getting volunteer ",error)
         } finally{
             if(showLoader){
                 set({volunteerLoader:false});
@@ -92,7 +119,6 @@ const useVolunteerBear = create((set, get)=>({
 
             return {success:true};
         } catch (error) {
-            console.log("error while saving volunteer push token ",error);
             throw error.response?.data || error;
         }
     },
@@ -120,8 +146,8 @@ const useVolunteerBear = create((set, get)=>({
                 if(freshVolunteerResponse?.data?.volunteer){
                     latestVolunteer = freshVolunteerResponse.data.volunteer;
                 }
-            } catch (refreshError) {
-                console.log("error while refreshing volunteer after location update ",refreshError);
+            } catch (_refreshError) {
+                // Keep initial response volunteer payload if refresh call fails.
             }
 
             if(latestVolunteer){
@@ -133,7 +159,6 @@ const useVolunteerBear = create((set, get)=>({
                 volunteer: latestVolunteer || response?.data?.volunteer,
             };
         } catch (error) {
-            console.log("error while updating volunteer location ",error);
             throw error.response?.data || error;
         }
     },
@@ -153,7 +178,6 @@ const useVolunteerBear = create((set, get)=>({
 
             return response.data;
         } catch (error) {
-            console.log("error while updating volunteer profile ",error);
             throw error.response?.data || error;
         }
     },
@@ -172,7 +196,6 @@ const useVolunteerBear = create((set, get)=>({
             set({volunteerAlerts:response.data?.alerts || []});
             return response.data;
         } catch (error) {
-            console.log("error while getting volunteer nearby alerts ",error);
             throw error.response?.data || error;
         } finally{
             if(showLoader){
@@ -196,7 +219,6 @@ const useVolunteerBear = create((set, get)=>({
             set({volunteerHistory:response.data?.alerts || []});
             return response.data;
         } catch (error) {
-            console.log("error while getting volunteer alert history ",error);
             throw error.response?.data || error;
         } finally{
             if(showLoader){
@@ -223,7 +245,6 @@ const useVolunteerBear = create((set, get)=>({
 
             return response.data;
         } catch (error) {
-            console.log("error while responding to volunteer alert ",error);
             throw error.response?.data || error;
         }
     },
@@ -261,7 +282,6 @@ const useVolunteerBear = create((set, get)=>({
 
             return response.data;
         } catch (error) {
-            console.log("error while cancelling volunteer alert ",error);
             throw error.response?.data || error;
         }
     },

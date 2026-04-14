@@ -1,4 +1,4 @@
-import {create } from "zustand"
+﻿import {create } from "zustand"
 import userInstance from "../api/user.api"
 import * as SecureStore from 'expo-secure-store';
 
@@ -16,7 +16,6 @@ const useUserBear = create((set, get)=>({
     alertHistoryLoader:false,
     signupUser:async(data)=>{
         try {
-            console.log("signup data : ",data)
             const response = await userInstance.post('/auth/signup',data);
             set({user:response.data.user})
             set({token:response.data.token})
@@ -24,13 +23,11 @@ const useUserBear = create((set, get)=>({
             await SecureStore.deleteItemAsync('guest');
             return response.data;
         } catch (error) {
-            console.log("Error while signup user : ",error);
             throw error.response?.data;
         }
     },
     loginUser: async(data)=>{
         try {
-            console.log("login data : ",data)
             const response = await userInstance.post('/auth/login',data);
             set({user:response.data.user})
             set({token:response.data.token})
@@ -38,7 +35,6 @@ const useUserBear = create((set, get)=>({
             await SecureStore.deleteItemAsync('guest');
             return response.data;
         } catch (error) {
-            console.log("Error while login user : ",error);
             throw error.response?.data;
         }
     },
@@ -51,7 +47,6 @@ const useUserBear = create((set, get)=>({
             await SecureStore.setItemAsync('guest',JSON.stringify(response.data?.user));
             return response.data;
         } catch (error) {
-            console.log("error while login as a guest ",error);
             throw error.response?.data;
         }
     },
@@ -84,7 +79,6 @@ const useUserBear = create((set, get)=>({
 
             return response.data;
         } catch (error) {
-            console.log("error while converting guest account ",error);
             throw error.response?.data || error;
         }
     },
@@ -100,7 +94,6 @@ const useUserBear = create((set, get)=>({
                 set({user:JSON.parse(guest), token:null});
             }
         } catch (error) {
-            console.log("error while getting user : ",error);
             // throw error.response?.data;
         } finally{
             set({userLoader:false})
@@ -120,7 +113,6 @@ const useUserBear = create((set, get)=>({
 
             return response.data;
         } catch (error) {
-            console.log("error while updating user profile ",error);
             throw error.response?.data || error;
         }
     },
@@ -137,7 +129,6 @@ const useUserBear = create((set, get)=>({
                 endpoint = `/alert/create/${userToken}`;
             }else if(guest){
                 const guestUser = JSON.parse(guest);
-                console.log(guestUser)
                 if(guestUser?._id){
                     payload.as_guest = guestUser._id;
                 }
@@ -191,7 +182,6 @@ const useUserBear = create((set, get)=>({
             });
             return response.data;
         } catch (error) {
-            console.log("error while creating alert ",error);
             throw error.response?.data || error;
         }
     },
@@ -241,7 +231,6 @@ const useUserBear = create((set, get)=>({
             });
             return response.data;
         } catch (error) {
-            console.log("error while fetching alert status ",error);
 
             if (error?.status === 404 || error?.response?.status === 404) {
                 await SecureStore.deleteItemAsync(ACTIVE_ALERT_ID_KEY);
@@ -263,7 +252,6 @@ const useUserBear = create((set, get)=>({
 
             return await get().fetchAlertStatus(alertId, false);
         } catch (error) {
-            console.log("error while loading latest alert status ",error);
             throw error;
         }
     },
@@ -293,7 +281,6 @@ const useUserBear = create((set, get)=>({
 
             return response.data;
         } catch (error) {
-            console.log("error while getting alert history ",error);
             throw error.response?.data || error;
         } finally {
             if(showLoader){
@@ -337,7 +324,6 @@ const useUserBear = create((set, get)=>({
 
             return response.data;
         } catch (error) {
-            console.log("error while cancelling alert ",error);
             throw error.response?.data || error;
         } finally {
             set({alertStatusLoader:false});
@@ -379,7 +365,6 @@ const useUserBear = create((set, get)=>({
 
             return response.data;
         } catch (error) {
-            console.log("error while ending alert ",error);
             throw error.response?.data || error;
         } finally {
             set({alertStatusLoader:false});
@@ -425,7 +410,6 @@ const useUserBear = create((set, get)=>({
 
             return response.data;
         } catch (error) {
-            console.log("error while hiring volunteer ",error);
             throw error.response?.data || error;
         } finally {
             set({alertStatusLoader:false});
@@ -443,7 +427,6 @@ const useUserBear = create((set, get)=>({
             await SecureStore.deleteItemAsync('userToken');  
             await SecureStore.deleteItemAsync('guest');
             await SecureStore.deleteItemAsync(ACTIVE_ALERT_ID_KEY);
-            console.log("out from logout");
             set({
                 user:null,
                 token:null,
@@ -455,7 +438,6 @@ const useUserBear = create((set, get)=>({
                 alertHistoryLoader:false,
             })
         } catch (error) {
-            console.log("Error while logout user : ",error);
             throw error.response?.data;
         }
     }

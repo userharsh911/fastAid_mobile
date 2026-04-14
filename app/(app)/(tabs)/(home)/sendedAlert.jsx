@@ -178,6 +178,19 @@ export default function SendedAlert() {
     }
   }
 
+  const getVolunteerDisplayName = (volunteer, index) => {
+    const name = volunteer?.fullname?.trim()
+    if (name) return name
+
+    const email = volunteer?.email?.trim()
+    if (email) {
+      const localPart = email.split('@')[0]?.trim()
+      if (localPart) return localPart
+    }
+
+    return `Volunteer ${index + 1}`
+  }
+
   const sendAnotherAlertHandler = async () => {
     if (sendingAnotherAlert || alertActionLoading) return
 
@@ -357,7 +370,7 @@ export default function SendedAlert() {
 
               return (
                 <View key={volunteer?._id || String(index)} className='border rounded-2xl p-4 mb-4' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
-                  <Text className='text-lg font-black' style={{ color: colors.text }}>Volunteer {index + 1}</Text>
+                  <Text className='text-lg font-black' style={{ color: colors.text }}>{getVolunteerDisplayName(volunteer, index)}</Text>
                   <Text className='text-sm mt-2' style={{ color: colors.textMuted }}>Email: {volunteer?.email || 'N/A'}</Text>
                   <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Phone: {volunteer?.phone || 'N/A'}</Text>
                   <Text className='text-sm mt-1' style={{ color: colors.textMuted }}>Mode: {volunteer?.mode || 'N/A'}</Text>

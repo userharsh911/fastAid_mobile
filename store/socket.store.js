@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { io } from "socket.io-client";
 import * as SecureStore from "expo-secure-store";
 import * as Notifications from "expo-notifications";
@@ -78,8 +78,8 @@ const scheduleVolunteerLocalAlertNotification = async (alertItem) => {
             },
             trigger: null,
         });
-    } catch (error) {
-        console.log("local volunteer notification error ", error);
+    } catch (_error) {
+        // Notification scheduling failure should not block socket refresh workflow.
     }
 };
 
@@ -180,7 +180,6 @@ const createSocketConnection = (authPayload, role, set, get) => {
     });
 
     socket.on("connect_error", (error) => {
-        console.log("socket connect error ", error?.message || error);
     });
 
     if (role === "user") {
@@ -218,7 +217,6 @@ const useSocketBear = create((set, get) => ({
 
             return { success: false };
         } catch (error) {
-            console.log("error while connecting user socket ", error);
             return { success: false };
         }
     },
@@ -229,7 +227,6 @@ const useSocketBear = create((set, get) => ({
 
             return createSocketConnection({ role: "volunteer", token: volunteerToken }, "volunteer", set, get);
         } catch (error) {
-            console.log("error while connecting volunteer socket ", error);
             return { success: false };
         }
     },

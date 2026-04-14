@@ -1,6 +1,6 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, Image, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Modal, useColorScheme, useWindowDimensions } from 'react-native'
+﻿import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, Image, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Modal, useColorScheme, useWindowDimensions } from 'react-native'
 import React, { useCallback, useEffect, useState } from 'react'
-import * as ImagePicker from 'expo-image-picker'
+import * as DocumentPicker from 'expo-document-picker'
 import * as Location from 'expo-location'
 import IonIcons from "@expo/vector-icons/Ionicons"
 import { Link } from 'expo-router'
@@ -10,7 +10,7 @@ import OpenStreetMapView from '../../../components/common/OpenStreetMapView'
 import useThemeBear from '../../../store/theme.store'
 
 export default function Volunteer() {
-  const [image, setImage] = useState(null)
+  const [verificationDocument, setVerificationDocument] = useState(null)
   const [fullname, setFullname] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -101,27 +101,29 @@ export default function Volunteer() {
     })
   }, [pickCurrentLocationForMap])
 
-  const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const pickVerificationDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        multiple: false,
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      })
 
-    if (!permissionResult.granted) {
-      Alert.alert('Permission required', 'Permission to access the media library is required.');
-      return;
+      if (result.canceled) return
+
+      const selectedDocument = result.assets?.[0]
+      if (!selectedDocument?.uri) return
+
+      setVerificationDocument({
+        uri: selectedDocument.uri,
+        name: selectedDocument.name,
+        mimeType: selectedDocument.mimeType || 'application/octet-stream',
+        size: selectedDocument.size,
+      })
+    } catch (_error) {
+      Alert.alert('Error', 'Unable to pick document right now.')
     }
-
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images',],
-      // allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    console.log(result);
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
-  };
+  }
 
   const applyHandler = async()=>{
     if (applying) return
@@ -142,6 +144,11 @@ export default function Volunteer() {
         return
       }
 
+      if (!verificationDocument?.uri) {
+        Alert.alert('Document required', 'Please upload verification document (image or PDF).')
+        return
+      }
+
       setApplying(true)
 
       const res = await applyVolunteer({
@@ -150,10 +157,10 @@ export default function Volunteer() {
         password,
         phone,
         coordinates: [selectedCoordinates.longitude, selectedCoordinates.latitude],
+        document: verificationDocument,
       })
 
       if(res.success){
-        console.log('volunteer apply success')
       }
     } catch (error) {
       Alert.alert("Error ",error?.message || "Error while applying");
@@ -194,18 +201,38 @@ export default function Volunteer() {
             </View>
 
             <View className='border rounded-2xl p-5 mb-5 items-center' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
-              <TouchableOpacity onPress={pickImage} activeOpacity={0.85}>
+              <TouchableOpacity onPress={pickVerificationDocument} activeOpacity={0.85}>
                 {
-                  image ? (
+                  verificationDocument ? (
                     <View>
-                    <Image
-                      source={{ uri: image }}
-                      className='w-24 h-24 rounded-2xl'
-                      style={{ borderWidth: 2, borderColor: colors.accent }}
-                    />
+                    {
+                      verificationDocument?.mimeType?.startsWith('image/') ? (
+                        <Image
+                          source={{ uri: verificationDocument.uri }}
+                          className='w-24 h-24 rounded-2xl'
+                          style={{ borderWidth: 2, borderColor: colors.accent }}
+                        />
+                      ) : (
+                        <View
+                          className='w-24 h-24 rounded-2xl items-center justify-center border-2'
+                          style={{ borderColor: colors.accent, backgroundColor: colors.accentSoftBg }}
+                        >
+                          <Text className='text-sm font-black tracking-widest uppercase' style={{ color: colors.accent }}>
+                            PDF
+                          </Text>
+                        </View>
+                      )
+                    }
                     <View className='absolute -bottom-2 -right-2 rounded-lg px-2 py-1' style={{ backgroundColor: colors.accent }}>
-                      <Text className='text-white text-xs font-black tracking-wider'>EDIT</Text>
+                      <Text className='text-white text-xs font-black tracking-wider'>CHANGE</Text>
                     </View>
+                    {
+                      verificationDocument?.name ? (
+                        <Text className='text-xs mt-2 text-center max-w-44' style={{ color: colors.textSoft }}>
+                          {verificationDocument.name}
+                        </Text>
+                      ) : null
+                    }
                   </View>
                   ) : (
                     <View
@@ -215,6 +242,9 @@ export default function Volunteer() {
                       <Text className='text-3xl' style={{ color: colors.accent }}>+</Text>
                       <Text className='text-xs font-bold tracking-widest uppercase mt-1' style={{ color: colors.accent }}>
                         Add Document
+                      </Text>
+                      <Text className='text-[10px] mt-1 font-semibold tracking-wider uppercase' style={{ color: colors.textSoft }}>
+                        Image or PDF
                       </Text>
                     </View>
                   )
@@ -282,7 +312,7 @@ export default function Volunteer() {
                   <TextInput
                     value={password}
                     onChangeText={setPassword}
-                    placeholder='••••••••'
+                    placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
                     placeholderTextColor={colors.placeholder}
                     secureTextEntry={!showPass}
                     className='flex-1 py-3 text-base font-medium'
@@ -304,7 +334,7 @@ export default function Volunteer() {
                   <TextInput
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
-                    placeholder='••••••••'
+                    placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
                     placeholderTextColor={colors.placeholder}
                     secureTextEntry={!showConfirm}
                     className='flex-1 py-3 text-base font-medium'

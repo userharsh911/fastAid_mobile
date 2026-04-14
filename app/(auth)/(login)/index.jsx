@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator, useColorScheme } from 'react-native'
+﻿import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator, useColorScheme } from 'react-native'
 import React, { useState } from 'react'
 import { Link } from 'expo-router'
 import useUserBear from "../../../store/user.store"
@@ -47,7 +47,6 @@ export default function Index() {
       setGuestLoggingIn(true)
       const res = await loginAsGuest({as_guest:true});
       if(res.success){
-        console.log("login as guest sucess : ")
       }
     } catch (error) {
       Alert.alert("Error ",error.message)
@@ -63,10 +62,8 @@ export default function Index() {
       setLoggingIn(true)
       const res = await loginUser({email,password});
       if(res.success){
-        console.log("login sucess : ")
       }
     } catch (error) {
-      console.log("err ",error)
       Alert.alert("Error ",error?.message || "Error while logging in")
     } finally {
       setLoggingIn(false)
@@ -129,7 +126,7 @@ export default function Index() {
                   <TextInput
                     value={password}
                     onChangeText={setPassword}
-                    placeholder='••••••••'
+                    placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
                     placeholderTextColor={colors.placeholder}
                     secureTextEntry={!showPass}
                     className='flex-1 py-3 text-base font-medium'

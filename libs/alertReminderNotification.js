@@ -1,4 +1,4 @@
-import * as Notifications from "expo-notifications";
+﻿import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 
 const ALERT_CANCEL_REMINDER_NOTIFICATION_KEY = "alertCancelReminderNotificationId";
@@ -31,8 +31,8 @@ export const clearActiveAlertReminderNotification = async () => {
   if (notificationId) {
     try {
       await Notifications.cancelScheduledNotificationAsync(notificationId);
-    } catch (error) {
-      console.log("error while cancelling reminder notification ", error);
+    } catch (_error) {
+      // Notification might already be removed; proceed with local key cleanup.
     }
   }
 

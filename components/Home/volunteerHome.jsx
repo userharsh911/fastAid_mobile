@@ -1,10 +1,32 @@
-import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, ActivityIndicator, useColorScheme, Image } from 'react-native'
+﻿import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, ActivityIndicator, useColorScheme, Image } from 'react-native'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
 import ImageView from 'react-native-image-viewing'
 import useVolunteerBear from '../../store/volunteer.store'
 import useThemeBear from '../../store/theme.store'
 import EmergencyLoader from '../common/EmergencyLoader'
+
+const normalizePhoneForDialer = (phoneValue) => {
+  if (phoneValue === null || phoneValue === undefined) return ''
+
+  const rawValue = String(phoneValue).trim()
+  if (!rawValue) return ''
+
+  let decodedValue = rawValue
+  try {
+    decodedValue = decodeURIComponent(rawValue)
+  } catch {
+  }
+
+  const cleanedValue = decodedValue.replace(/[^\d+]/g, '')
+  if (!cleanedValue) return ''
+
+  if (cleanedValue.startsWith('+')) {
+    return `+${cleanedValue.slice(1).replace(/\+/g, '')}`
+  }
+
+  return cleanedValue.replace(/\+/g, '')
+}
 
 const getModeBadgeStyle = (mode, isDarkMode) => {
   if (mode === 'Alloted') {
@@ -96,7 +118,6 @@ export default function VolunteerHome() {
       setRefreshingAlerts(true)
       await getVolunteerNearbyAlerts()
     } catch (error) {
-      console.log('error while refreshing volunteer alerts ', error)
     } finally {
       setRefreshingAlerts(false)
     }
@@ -158,11 +179,18 @@ export default function VolunteerHome() {
   }
 
   const callUser = async (phone) => {
-    if (!phone) return
-    const url = `tel:${phone}`
-    const canOpen = await Linking.canOpenURL(url)
-    if (canOpen) {
-      Linking.openURL(url)
+    const normalizedPhone = normalizePhoneForDialer(phone)
+    if (!normalizedPhone) {
+      Alert.alert('Phone unavailable', 'User phone number is not valid.')
+      return
+    }
+
+    const phoneUrl = `tel:${normalizedPhone}`
+
+    try {
+      await Linking.openURL(phoneUrl)
+    } catch {
+      Alert.alert('Call failed', 'Unable to open phone dialer right now.')
     }
   }
 

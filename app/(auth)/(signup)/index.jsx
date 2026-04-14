@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Alert, ActivityIndicator, useColorScheme } from 'react-native'
+﻿import { View, Text, TextInput, TouchableOpacity, StatusBar, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Alert, ActivityIndicator, useColorScheme } from 'react-native'
 import React, { useState } from 'react'
 import { Link } from 'expo-router'
 import useUserBear from '../../../store/user.store'
@@ -57,7 +57,6 @@ export default function Index() {
 
       const res = await signupUser({fullname,email,password,phone})
       if(res.success){
-        console.log('user signup success')
       }
     } catch (error) {
       Alert.alert("Error ",error?.message || "Error while signing up");
@@ -157,7 +156,7 @@ export default function Index() {
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder='••••••••'
+                placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
                 placeholderTextColor={colors.placeholder}
                 secureTextEntry={!showPass}
                 className='flex-1 py-3 text-base font-medium'
@@ -179,7 +178,7 @@ export default function Index() {
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                placeholder='••••••••'
+                placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
                 placeholderTextColor={colors.placeholder}
                 secureTextEntry={!showConfirm}
                 className='flex-1 py-3 text-base font-medium'

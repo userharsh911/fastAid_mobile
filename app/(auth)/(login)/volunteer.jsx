@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator, useColorScheme } from 'react-native'
+﻿import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator, useColorScheme } from 'react-native'
 import React, { useState } from 'react'
 import { Link } from 'expo-router'
 import Ionicons from '@expo/vector-icons/Ionicons'
@@ -41,7 +41,6 @@ export default function Volunteer() {
       setLoggingIn(true)
       const res = await loginVolunteer({email,password});
       if(res.success){
-        console.log("volunteer login success")
       }
     } catch (error) {
       Alert.alert("Error ",error?.message || "Error while logging in");
@@ -106,7 +105,7 @@ export default function Volunteer() {
                   <TextInput
                     value={password}
                     onChangeText={setPassword}
-                    placeholder='••••••••'
+                    placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
                     placeholderTextColor={colors.placeholder}
                     secureTextEntry={!showPass}
                     className='flex-1 py-3 text-base font-medium'

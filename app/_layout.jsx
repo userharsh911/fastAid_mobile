@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import useUserBear from "../store/user.store";
@@ -47,7 +47,6 @@ export default function RootLayout() {
   useEffect(()=>{
     getUser();
     getVolunteer();
-    console.log("user get kiya ")
   },[getUser,getVolunteer])
 
   useEffect(() => {
@@ -56,8 +55,8 @@ export default function RootLayout() {
     const configureNavigationBar = async () => {
       try {
         await NavigationBar.setButtonStyleAsync(isDarkMode ? "light" : "dark");
-      } catch (error) {
-        console.log("failed to configure navigation bar", error);
+      } catch (_error) {
+        // Ignore unsupported navigation bar runtime config errors.
       }
     };
 
@@ -71,7 +70,6 @@ export default function RootLayout() {
       try {
         const isExpoGo = Constants?.appOwnership === "expo";
         if (isExpoGo) {
-          console.log("Push token registration skipped: Expo Go does not support remote push notifications on SDK 53+.");
           return;
         }
 
@@ -97,7 +95,6 @@ export default function RootLayout() {
           Platform.OS !== "android" || Boolean(Constants?.expoConfig?.android?.googleServicesFile);
 
         if (!hasAndroidGoogleServicesConfig) {
-          console.log("Push token registration skipped: Android FCM is not configured (google-services.json missing). Remote push notifications are disabled until FCM setup is complete.");
           return;
         }
 
@@ -107,7 +104,6 @@ export default function RootLayout() {
           ?? (typeof process !== "undefined" ? process?.env?.EXPO_PUBLIC_EAS_PROJECT_ID : undefined);
 
         if (!projectId) {
-          console.log("Push token registration skipped: EAS projectId is missing. Run 'eas project:init' or add expo.extra.eas.projectId in app config.");
           return;
         }
 
@@ -116,8 +112,8 @@ export default function RootLayout() {
         if (tokenResponse?.data) {
           await saveVolunteerPushToken(tokenResponse.data);
         }
-      } catch (error) {
-        console.log("error while registering push token ", error);
+      } catch (_error) {
+        // Push registration failures are non-fatal for app startup.
       }
     };
 
