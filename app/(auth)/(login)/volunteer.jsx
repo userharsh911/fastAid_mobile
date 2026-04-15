@@ -34,13 +34,17 @@ export default function Volunteer() {
     disabledPrimary: isDarkMode ? '#475569' : '#fca5a5',
   }
   const {loginVolunteer} = useVolunteerBear(state=>state);
+  const normalizedEmail = String(email || '').trim()
+  const normalizedPassword = String(password || '').trim()
+  const isLoginFormValid = Boolean(normalizedEmail && normalizedPassword)
+  const isLoginDisabled = loggingIn || !isLoginFormValid
 
   const loginHandler = async()=>{
-    if (loggingIn) return
+    if (loggingIn || !isLoginFormValid) return
 
     try {
       setLoggingIn(true)
-      const res = await loginVolunteer({email,password});
+      const res = await loginVolunteer({email: normalizedEmail,password: normalizedPassword});
 
       if (res?.requiresOtp) {
         Alert.alert('Verify OTP', res?.message || 'OTP sent to your email. Please verify to continue.')
@@ -149,9 +153,9 @@ export default function Volunteer() {
 
             <TouchableOpacity
               className='py-4 items-center rounded-xl mb-4'
-              style={{ backgroundColor: loggingIn ? colors.disabledPrimary : colors.accent }}
+              style={{ backgroundColor: isLoginDisabled ? colors.disabledPrimary : colors.accent }}
               activeOpacity={0.85}
-              disabled={loggingIn}
+              disabled={isLoginDisabled}
               onPress={loginHandler}
             >
               <View className='flex-row items-center gap-2'>

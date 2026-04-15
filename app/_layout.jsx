@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useRef, useState } from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import useUserBear from "../store/user.store";
@@ -12,7 +12,7 @@ import { clearActiveAlertReminderNotification, syncActiveAlertReminderNotificati
 import EmergencyLoader from "../components/common/EmergencyLoader";
 import SplashScreen from "../components/SplashScreen";
 import "../global.css";
-import { Platform, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -21,6 +21,8 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+let hasShownIntroSplashInSession = false;
 
 export default function RootLayout() {
   const { user , getUser, userLoader, latestAlert, loadLatestAlertStatus } = useUserBear((state) => state);
@@ -32,13 +34,27 @@ export default function RootLayout() {
   const rootNavigationState = useRootNavigationState();
   const systemColorScheme = useColorScheme();
   const lastAuthRedirectRef = useRef(null);
-  const [showIntroSplash, setShowIntroSplash] = useState(true);
+  const [showIntroSplash, setShowIntroSplash] = useState(() => !hasShownIntroSplashInSession);
+
+  const handleIntroSplashFinish = useCallback(() => {
+    hasShownIntroSplashInSession = true;
+    setShowIntroSplash(false);
+  }, []);
 
   const resolvedTheme = themePreference === "system"
     ? (systemColorScheme === "dark" ? "dark" : "light")
     : themePreference;
   const isDarkMode = resolvedTheme === "dark";
   const appBackgroundColor = isDarkMode ? "#0b1220" : "#ffffff";
+  const isAuthenticated = Boolean(user?._id || volunteer?._id);
+  const topSegment = segments?.[0] || null;
+  const isNavigatorReady = Boolean(rootNavigationState?.key);
+  const isSessionHydrating = userLoader || volunteerLoader;
+  const isBootReady = !showIntroSplash && isNavigatorReady && !isSessionHydrating;
+  const desiredTopSegment = isAuthenticated ? "(app)" : "(auth)";
+  const desiredRoute = isAuthenticated ? '/(app)/(tabs)' : '/(auth)/(login)';
+  const isOnDesiredTopSegment = topSegment === desiredTopSegment;
+  const shouldShowBootLoader = !showIntroSplash && (!isNavigatorReady || isSessionHydrating || !isOnDesiredTopSegment);
 
   useEffect(() => {
     loadThemePreference().catch(() => {});
@@ -184,56 +200,58 @@ export default function RootLayout() {
   }, [routes, rootNavigationState?.key]);
 
   useEffect(() => {
-    // Don't attempt navigation until the root navigator has mounted
-    if (showIntroSplash || !rootNavigationState?.key || userLoader || volunteerLoader) return;
-
-    const isAuthenticated = Boolean(user?._id || volunteer?._id);
-    const isInAppGroup = segments?.[0] === "(app)";
-
-    let targetRoute = null;
-
-    if (isAuthenticated && !isInAppGroup) {
-      targetRoute = '/(app)/(tabs)';
-    } else if (!isAuthenticated && isInAppGroup) {
-      targetRoute = '/(auth)/(login)';
+    if (!isBootReady) {
+      return;
     }
 
-    if (!targetRoute) {
+    if (isOnDesiredTopSegment) {
       lastAuthRedirectRef.current = null;
       return;
     }
 
-    if (lastAuthRedirectRef.current === targetRoute) return;
+    if (lastAuthRedirectRef.current === desiredRoute) return;
 
-    lastAuthRedirectRef.current = targetRoute;
-    routes.replace(targetRoute);
-  }, [routes, segments, user?._id, volunteer?._id, userLoader, volunteerLoader, rootNavigationState?.key, showIntroSplash]);
+    lastAuthRedirectRef.current = desiredRoute;
+    routes.replace(desiredRoute);
+  }, [desiredRoute, isBootReady, isOnDesiredTopSegment, routes]);
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: appBackgroundColor }}>
         {
           showIntroSplash ? (
-            <SplashScreen onFinish={() => setShowIntroSplash(false)} />
-          ) : (userLoader || volunteerLoader) ? (
+            <SplashScreen onFinish={handleIntroSplashFinish} />
+          ) : (
             <View style={{ flex: 1, backgroundColor: appBackgroundColor }}>
-              <EmergencyLoader
-                fullScreen
-                size='large'
-                label='Preparing Emergency Guardian'
-              />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                }}
+              >
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(app)" />
+              </Stack>
+
+              {shouldShowBootLoader ? (
+                <View style={[styles.bootLoaderOverlay, { backgroundColor: appBackgroundColor }]}>
+                  <EmergencyLoader
+                    fullScreen
+                    size='large'
+                    label='Preparing Emergency Guardian'
+                  />
+                </View>
+              ) : null}
             </View>
-          ) :
-          <Stack
-            screenOptions={{
-              headerShown: false,
-            }}
-          >
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(app)" />
-          </Stack>
+          )
         }
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  bootLoaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+  },
+});

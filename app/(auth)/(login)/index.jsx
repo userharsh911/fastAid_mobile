@@ -39,6 +39,10 @@ export default function Index() {
   }
 
   const {loginAsGuest, loginUser} = useUserBear(state=>state);
+  const normalizedEmail = String(email || '').trim()
+  const normalizedPassword = String(password || '').trim()
+  const isLoginFormValid = Boolean(normalizedEmail && normalizedPassword)
+  const isLoginDisabled = loggingIn || guestLoggingIn || !isLoginFormValid
 
   const guestLogin = async()=>{
     if (guestLoggingIn || loggingIn) return
@@ -56,11 +60,11 @@ export default function Index() {
   }
 
   const loginHandler = async()=>{
-    if (loggingIn || guestLoggingIn) return
+    if (loggingIn || guestLoggingIn || !isLoginFormValid) return
 
     try {
       setLoggingIn(true)
-      const res = await loginUser({email,password});
+      const res = await loginUser({email: normalizedEmail,password: normalizedPassword});
       if(res.success){
       }
     } catch (error) {
@@ -147,9 +151,9 @@ export default function Index() {
 
             <TouchableOpacity
               className='py-4 items-center rounded-xl'
-              style={{ backgroundColor: (loggingIn || guestLoggingIn) ? colors.disabledPrimary : colors.accent }}
+              style={{ backgroundColor: isLoginDisabled ? colors.disabledPrimary : colors.accent }}
               activeOpacity={0.85}
-              disabled={loggingIn || guestLoggingIn}
+              disabled={isLoginDisabled}
               onPress={loginHandler}
             >
               <View className='flex-row items-center gap-2'>

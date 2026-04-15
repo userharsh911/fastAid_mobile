@@ -37,25 +37,34 @@ export default function Index() {
     disabledPrimary: isDarkMode ? '#475569' : '#fca5a5',
   }
   const {signupUser} = useUserBear(state=>state);
+  const normalizedFullname = String(fullname || '').trim()
+  const normalizedEmail = String(email || '').trim()
+  const normalizedPhone = String(phone || '').trim()
+  const normalizedPassword = String(password || '')
+  const normalizedConfirmPassword = String(confirmPassword || '')
+  const isSignupFormValid = Boolean(
+    normalizedFullname
+    && normalizedEmail
+    && normalizedPhone
+    && normalizedPassword
+    && normalizedConfirmPassword
+    && normalizedPassword === normalizedConfirmPassword
+  )
+  const isSignupDisabled = signingUp || !isSignupFormValid
 
 
   const signupHandler = async()=>{
-    if (signingUp) return
+    if (signingUp || !isSignupFormValid) return
 
     try {
-      if (!fullname.trim() || !email.trim() || !phone.trim() || !password) {
-        Alert.alert('Missing fields', 'Please fill all required fields.')
-        return
-      }
-
-      if (password !== confirmPassword) {
-        Alert.alert('Error', 'Passwords do not match')
-        return
-      }
-
       setSigningUp(true)
 
-      const res = await signupUser({fullname,email,password,phone})
+      const res = await signupUser({
+        fullname: normalizedFullname,
+        email: normalizedEmail,
+        password: normalizedPassword,
+        phone: normalizedPhone,
+      })
       if(res.success){
       }
     } catch (error) {
@@ -209,9 +218,9 @@ export default function Index() {
 
         <TouchableOpacity
           className='py-4 items-center rounded-xl'
-          style={{ backgroundColor: signingUp ? colors.disabledPrimary : colors.accent }}
+          style={{ backgroundColor: isSignupDisabled ? colors.disabledPrimary : colors.accent }}
           activeOpacity={0.85}
-          disabled={signingUp}
+          disabled={isSignupDisabled}
           onPress={signupHandler}
         >
           <View className='flex-row items-center gap-2'>

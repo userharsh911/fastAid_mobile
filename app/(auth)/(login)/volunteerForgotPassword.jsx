@@ -57,9 +57,21 @@ export default function VolunteerForgotPassword() {
   }
 
   const normalizedEmail = useMemo(() => String(email || '').trim().toLowerCase(), [email])
+  const normalizedOtp = useMemo(() => String(otp || '').trim(), [otp])
+  const normalizedNewPassword = useMemo(() => String(newPassword || '').trim(), [newPassword])
+  const normalizedConfirmPassword = useMemo(() => String(confirmPassword || '').trim(), [confirmPassword])
+  const canSendOtp = Boolean(normalizedEmail)
+  const canVerifyOtp = Boolean(normalizedEmail && normalizedOtp.length === 6)
+  const canResetPassword = Boolean(
+    normalizedEmail
+    && resetSessionToken
+    && normalizedNewPassword
+    && normalizedConfirmPassword
+    && normalizedNewPassword === normalizedConfirmPassword
+  )
 
   const sendOtpHandler = async () => {
-    if (!normalizedEmail) {
+    if (!canSendOtp) {
       Alert.alert('Missing email', 'Please enter your volunteer email.')
       return
     }
@@ -79,8 +91,6 @@ export default function VolunteerForgotPassword() {
   }
 
   const verifyOtpHandler = async () => {
-    const normalizedOtp = String(otp || '').trim()
-
     if (!normalizedEmail || !normalizedOtp) {
       Alert.alert('Missing fields', 'Please enter email and OTP.')
       return
@@ -117,7 +127,7 @@ export default function VolunteerForgotPassword() {
       return
     }
 
-    if (newPassword !== confirmPassword) {
+    if (normalizedNewPassword !== normalizedConfirmPassword) {
       Alert.alert('Mismatch', 'Passwords do not match.')
       return
     }
@@ -126,7 +136,7 @@ export default function VolunteerForgotPassword() {
       setResettingPassword(true)
       const response = await resetVolunteerForgotPassword({
         email: normalizedEmail,
-        newPassword,
+        newPassword: normalizedNewPassword,
         resetSessionToken,
       })
 
@@ -273,9 +283,9 @@ export default function VolunteerForgotPassword() {
             {step === STEPS.SEND_OTP ? (
               <TouchableOpacity
                 className='py-4 items-center rounded-xl mb-4'
-                style={{ backgroundColor: sendingOtp ? colors.disabledPrimary : colors.accent }}
+                style={{ backgroundColor: (sendingOtp || !canSendOtp) ? colors.disabledPrimary : colors.accent }}
                 activeOpacity={0.85}
-                disabled={sendingOtp}
+                disabled={sendingOtp || !canSendOtp}
                 onPress={sendOtpHandler}
               >
                 <View className='flex-row items-center gap-2'>
@@ -291,19 +301,27 @@ export default function VolunteerForgotPassword() {
               <View className='flex-row gap-3 mb-4'>
                 <TouchableOpacity
                   className='flex-1 border rounded-xl py-4 items-center'
-                  style={{ borderColor: colors.accent, backgroundColor: colors.secondaryBg }}
+                  style={{
+                    borderColor: (sendingOtp || verifyingOtp || !canSendOtp) ? colors.inputBorder : colors.accent,
+                    backgroundColor: (sendingOtp || verifyingOtp || !canSendOtp) ? colors.inputBg : colors.secondaryBg,
+                  }}
                   activeOpacity={0.85}
-                  disabled={sendingOtp || verifyingOtp}
+                  disabled={sendingOtp || verifyingOtp || !canSendOtp}
                   onPress={sendOtpHandler}
                 >
-                  <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.accent }}>Resend OTP</Text>
+                  <Text
+                    className='font-black text-xs tracking-widest uppercase'
+                    style={{ color: (sendingOtp || verifyingOtp || !canSendOtp) ? colors.textSoft : colors.accent }}
+                  >
+                    Resend OTP
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   className='flex-1 py-4 items-center rounded-xl'
-                  style={{ backgroundColor: verifyingOtp ? colors.disabledPrimary : colors.accent }}
+                  style={{ backgroundColor: (verifyingOtp || sendingOtp || !canVerifyOtp) ? colors.disabledPrimary : colors.accent }}
                   activeOpacity={0.85}
-                  disabled={verifyingOtp || sendingOtp}
+                  disabled={verifyingOtp || sendingOtp || !canVerifyOtp}
                   onPress={verifyOtpHandler}
                 >
                   <View className='flex-row items-center gap-2'>
@@ -319,9 +337,9 @@ export default function VolunteerForgotPassword() {
             {step === STEPS.RESET_PASSWORD ? (
               <TouchableOpacity
                 className='py-4 items-center rounded-xl mb-4'
-                style={{ backgroundColor: resettingPassword ? colors.disabledPrimary : colors.accent }}
+                style={{ backgroundColor: (resettingPassword || !canResetPassword) ? colors.disabledPrimary : colors.accent }}
                 activeOpacity={0.85}
-                disabled={resettingPassword}
+                disabled={resettingPassword || !canResetPassword}
                 onPress={resetPasswordHandler}
               >
                 <View className='flex-row items-center gap-2'>

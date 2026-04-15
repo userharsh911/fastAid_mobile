@@ -52,6 +52,24 @@ export default function Volunteer() {
   }
   const fullscreenMapHeight = Math.max(360, windowHeight - 220)
   const {applyVolunteer} = useVolunteerBear(state=>state);
+  const normalizedFullname = String(fullname || '').trim()
+  const normalizedEmail = String(email || '').trim()
+  const normalizedPhone = String(phone || '').trim()
+  const normalizedPassword = String(password || '')
+  const normalizedConfirmPassword = String(confirmPassword || '')
+  const hasValidLocation = Number.isFinite(selectedCoordinates?.latitude) && Number.isFinite(selectedCoordinates?.longitude)
+  const hasVerificationDocument = Boolean(verificationDocument?.uri)
+  const isApplyFormValid = Boolean(
+    normalizedFullname
+    && normalizedEmail
+    && normalizedPhone
+    && normalizedPassword
+    && normalizedConfirmPassword
+    && normalizedPassword === normalizedConfirmPassword
+    && hasValidLocation
+    && hasVerificationDocument
+  )
+  const isApplyDisabled = applying || !isApplyFormValid
 
   const setMapPin = useCallback((latitude, longitude, keepZoom = true) => {
     if (typeof latitude !== 'number' || typeof longitude !== 'number') return
@@ -127,7 +145,7 @@ export default function Volunteer() {
   }
 
   const applyHandler = async()=>{
-    if (applying) return
+    if (isApplyDisabled) return
 
     try {
       if (!fullname.trim() || !email.trim() || !phone.trim() || !password) {
@@ -153,10 +171,10 @@ export default function Volunteer() {
       setApplying(true)
 
       const res = await applyVolunteer({
-        fullname,
-        email,
-        password,
-        phone,
+        fullname: normalizedFullname,
+        email: normalizedEmail,
+        password: normalizedPassword,
+        phone: normalizedPhone,
         coordinates: [selectedCoordinates.longitude, selectedCoordinates.latitude],
         document: verificationDocument,
       })
@@ -166,7 +184,7 @@ export default function Volunteer() {
         routes.push({
           pathname: '/(auth)/(login)/volunteerOtp',
           params: {
-            email: String(email || '').trim().toLowerCase(),
+            email: normalizedEmail.toLowerCase(),
           },
         })
         return
@@ -465,9 +483,9 @@ export default function Volunteer() {
 
             <TouchableOpacity
               className='py-4 items-center mb-4 rounded-xl'
-              style={{ backgroundColor: applying ? colors.disabledPrimary : colors.accent }}
+              style={{ backgroundColor: isApplyDisabled ? colors.disabledPrimary : colors.accent }}
               activeOpacity={0.85}
-              disabled={applying}
+              disabled={isApplyDisabled}
               onPress={applyHandler}
             >
               <View className='flex-row items-center gap-2'>
