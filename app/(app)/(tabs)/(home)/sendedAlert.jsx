@@ -133,28 +133,31 @@ export default function SendedAlert() {
   })()
 
   const getVolunteerAction = (volunteerId) => {
+    const mutedBackgroundColor = isDarkMode ? '#475569' : '#d1d5db'
+    const mutedTextColor = isDarkMode ? '#f8fafc' : '#111827'
+
     if (latestAlert?.mode === 'Cancelled') {
-      return { enabled: false, label: 'Cancelled', className: 'bg-gray-300' }
+      return { enabled: false, label: 'Cancelled', backgroundColor: mutedBackgroundColor, textColor: mutedTextColor }
     }
 
     if (latestAlert?.mode === 'End') {
-      return { enabled: false, label: 'Completed', className: 'bg-green-600' }
+      return { enabled: false, label: 'Completed', backgroundColor: '#16a34a', textColor: '#ffffff' }
     }
 
     if (latestAlert?.mode !== 'Alloted') {
       const isResponded = hasVolunteerResponded(volunteerId)
       if (latestAlert?.mode === 'Active' && isResponded) {
-        return { enabled: true, label: 'Hire', className: 'bg-red-600' }
+        return { enabled: true, label: 'Hire', backgroundColor: '#dc2626', textColor: '#ffffff' }
       }
 
-      return { enabled: false, label: 'Waiting', className: 'bg-gray-300' }
+      return { enabled: false, label: 'Waiting', backgroundColor: mutedBackgroundColor, textColor: mutedTextColor }
     }
 
     if (String(volunteerId) === String(allottedVolunteerId)) {
-      return { enabled: true, label: 'View', className: 'bg-red-600' }
+      return { enabled: true, label: 'View', backgroundColor: '#dc2626', textColor: '#ffffff' }
     }
 
-    return { enabled: false, label: 'Hired', className: 'bg-gray-300' }
+    return { enabled: false, label: 'Hired', backgroundColor: mutedBackgroundColor, textColor: mutedTextColor }
   }
 
   const hireVolunteerHandler = (volunteer) => {
@@ -418,14 +421,15 @@ export default function SendedAlert() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      className={`flex-1 py-3 items-center rounded-xl ${volunteerAction.className}`}
+                      className='flex-1 py-3 items-center rounded-xl'
+                      style={{ backgroundColor: volunteerAction.backgroundColor }}
                       activeOpacity={0.85}
                       disabled={!volunteerAction.enabled || Boolean(hiringVolunteerId) || Boolean(alertActionLoading) || sendingAnotherAlert}
                       onPress={() => hireVolunteerHandler(volunteer)}
                     >
                       <View className='flex-row items-center gap-2'>
                         {isHiringThisVolunteer ? <ActivityIndicator color='#fff' size='small' /> : null}
-                        <Text className='text-white font-black text-xs tracking-widest uppercase'>
+                        <Text className='font-black text-xs tracking-widest uppercase' style={{ color: volunteerAction.textColor }}>
                           {isHiringThisVolunteer ? 'Hiring...' : volunteerAction.label}
                         </Text>
                       </View>
@@ -462,7 +466,8 @@ export default function SendedAlert() {
         {
           latestAlert?.mode === 'Alloted' ? (
             <TouchableOpacity
-              className={`py-4 items-center rounded-xl mt-3 ${alertActionLoading === 'end' ? 'bg-green-400' : 'bg-green-600'}`}
+              className='py-4 items-center rounded-xl mt-3'
+              style={{ backgroundColor: alertActionLoading === 'end' ? '#4ade80' : '#16a34a' }}
               activeOpacity={0.85}
               disabled={Boolean(alertActionLoading) || sendingAnotherAlert}
               onPress={endAlertHandler}

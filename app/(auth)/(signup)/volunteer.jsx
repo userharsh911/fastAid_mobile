@@ -3,13 +3,14 @@ import React, { useCallback, useEffect, useState } from 'react'
 import * as DocumentPicker from 'expo-document-picker'
 import * as Location from 'expo-location'
 import IonIcons from "@expo/vector-icons/Ionicons"
-import { Link } from 'expo-router'
+import { Link, useRouter } from 'expo-router'
 import useVolunteerBear from '../../../store/volunteer.store'
 import EmergencyLoader from '../../../components/common/EmergencyLoader'
 import OpenStreetMapView from '../../../components/common/OpenStreetMapView'
 import useThemeBear from '../../../store/theme.store'
 
 export default function Volunteer() {
+  const routes = useRouter()
   const [verificationDocument, setVerificationDocument] = useState(null)
   const [fullname, setFullname] = useState('')
   const [email, setEmail] = useState('')
@@ -160,6 +161,17 @@ export default function Volunteer() {
         document: verificationDocument,
       })
 
+      if (res?.requiresOtp) {
+        Alert.alert('Verify OTP', res?.message || 'OTP sent to your email. Please verify to continue.')
+        routes.push({
+          pathname: '/(auth)/(login)/volunteerOtp',
+          params: {
+            email: String(email || '').trim().toLowerCase(),
+          },
+        })
+        return
+      }
+
       if(res.success){
       }
     } catch (error) {
@@ -204,7 +216,7 @@ export default function Volunteer() {
               <TouchableOpacity onPress={pickVerificationDocument} activeOpacity={0.85}>
                 {
                   verificationDocument ? (
-                    <View>
+                    <View key='doc-selected' className='items-center'>
                     {
                       verificationDocument?.mimeType?.startsWith('image/') ? (
                         <Image
@@ -236,16 +248,21 @@ export default function Volunteer() {
                   </View>
                   ) : (
                     <View
-                      className='px-6 h-24 border-2 border-dashed items-center justify-center rounded-2xl'
-                      style={{ borderColor: colors.accentSoftBorder, backgroundColor: colors.accentSoftBg }}
+                      key='doc-empty'
+                      className='items-center'
                     >
-                      <Text className='text-3xl' style={{ color: colors.accent }}>+</Text>
-                      <Text className='text-xs font-bold tracking-widest uppercase mt-1' style={{ color: colors.accent }}>
-                        Add Document
-                      </Text>
-                      <Text className='text-[10px] mt-1 font-semibold tracking-wider uppercase' style={{ color: colors.textSoft }}>
-                        Image or PDF
-                      </Text>
+                      <View
+                        className='px-6 h-24 border-2 border-dashed items-center justify-center rounded-2xl'
+                        style={{ borderColor: colors.accentSoftBorder, backgroundColor: colors.accentSoftBg }}
+                      >
+                        <Text className='text-3xl' style={{ color: colors.accent }}>+</Text>
+                        <Text className='text-xs font-bold tracking-widest uppercase mt-1' style={{ color: colors.accent }}>
+                          Add Document
+                        </Text>
+                        <Text className='text-[10px] mt-1 font-semibold tracking-wider uppercase' style={{ color: colors.textSoft }}>
+                          Image or PDF
+                        </Text>
+                      </View>
                     </View>
                   )
                 }

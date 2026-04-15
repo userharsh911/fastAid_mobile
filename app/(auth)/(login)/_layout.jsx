@@ -6,6 +6,8 @@ export default function LoginLayout() {
     <Stack screenOptions={{headerShown:false}}>
         <Stack.Screen name='index'/>
         <Stack.Screen name='volunteer'/>
+        <Stack.Screen name='volunteerOtp'/>
+        <Stack.Screen name='volunteerForgotPassword'/>
     </Stack>
   )
 }

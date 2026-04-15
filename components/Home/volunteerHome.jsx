@@ -276,6 +276,10 @@ export default function VolunteerHome() {
             const longitude = alertItem?.location?.coordinates?.[0]
             const latitude = alertItem?.location?.coordinates?.[1]
             const modeBadge = getModeBadgeStyle(alertItem?.mode, isDarkMode)
+            const actionButtonBackgroundColor = canSelect
+              ? '#dc2626'
+              : (isAllotedForMe ? '#16a34a' : (hasRespondedByMe ? '#f59e0b' : (isDarkMode ? '#475569' : '#d1d5db')))
+            const actionButtonTextColor = canSelect || isAllotedForMe || hasRespondedByMe ? '#ffffff' : (isDarkMode ? '#f8fafc' : '#111827')
 
             return (
               <View key={alertItem?._id || String(index)} className='border rounded-2xl p-4 mb-4' style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
@@ -326,14 +330,15 @@ export default function VolunteerHome() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    className={`flex-1 py-3 items-center rounded-xl ${canSelect ? 'bg-red-600' : (isAllotedForMe ? 'bg-green-600' : (hasRespondedByMe ? 'bg-amber-500' : 'bg-gray-300'))}`}
+                    className='flex-1 py-3 items-center rounded-xl'
+                    style={{ backgroundColor: actionButtonBackgroundColor }}
                     activeOpacity={0.85}
                     disabled={!canSelect || isAnyAlertActionInProgress}
                     onPress={() => handleImIn(alertItem?._id)}
                   >
                     <View className='flex-row items-center gap-2'>
                       {isSelectingThisAlert ? <ActivityIndicator color='#fff' size='small' /> : null}
-                      <Text className='text-white font-black text-xs tracking-widest uppercase'>
+                      <Text className='font-black text-xs tracking-widest uppercase' style={{ color: actionButtonTextColor }}>
                         {isSelectingThisAlert
                           ? 'Processing...'
                           : (canSelect ? "I'm In" : (isAllotedForMe ? 'Assigned To You' : (hasRespondedByMe ? 'Waiting User' : (myAllotedAlert ? 'Already Assigned' : 'Assigned'))))}

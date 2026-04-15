@@ -227,7 +227,8 @@ export default function HireVolunteer() {
 
       <View className='px-6 mt-3'>
         <TouchableOpacity
-          className={`py-4 items-center rounded-xl ${completingWork ? 'bg-green-400' : 'bg-green-600'}`}
+          className='py-4 items-center rounded-xl'
+          style={{ backgroundColor: completingWork ? '#4ade80' : '#16a34a' }}
           activeOpacity={0.85}
           disabled={completingWork}
           onPress={markWorkCompletedHandler}

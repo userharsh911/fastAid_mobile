@@ -1,11 +1,12 @@
 ﻿import { View, Text, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, ActivityIndicator, useColorScheme } from 'react-native'
 import React, { useState } from 'react'
-import { Link } from 'expo-router'
+import { Link, useRouter } from 'expo-router'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import useVolunteerBear from '../../../store/volunteer.store'
 import useThemeBear from '../../../store/theme.store'
 
 export default function Volunteer() {
+  const routes = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false);
@@ -40,6 +41,18 @@ export default function Volunteer() {
     try {
       setLoggingIn(true)
       const res = await loginVolunteer({email,password});
+
+      if (res?.requiresOtp) {
+        Alert.alert('Verify OTP', res?.message || 'OTP sent to your email. Please verify to continue.')
+        routes.push({
+          pathname: '/(auth)/(login)/volunteerOtp',
+          params: {
+            email: String(email || '').trim().toLowerCase(),
+          },
+        })
+        return
+      }
+
       if(res.success){
       }
     } catch (error) {
@@ -122,6 +135,16 @@ export default function Volunteer() {
                   </TouchableOpacity>
                 </View>
               </View>
+
+              <TouchableOpacity
+                className='self-end mt-3'
+                activeOpacity={0.8}
+                onPress={() => routes.push('/(auth)/(login)/volunteerForgotPassword')}
+              >
+                <Text className='text-xs font-black tracking-widest uppercase' style={{ color: colors.accent }}>
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity

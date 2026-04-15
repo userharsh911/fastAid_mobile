@@ -29,6 +29,7 @@ const normalizeLocationCoordinates = (coordinates) => {
 const useVolunteerBear = create((set, get)=>({
     volunteer:null,
     voluteerToken:null,
+    pendingVolunteerOtpSession:null,
     volunteerLoader:true,
     volunteerAlerts:[],
     volunteerAlertsLoader:false,
@@ -68,9 +69,23 @@ const useVolunteerBear = create((set, get)=>({
                 response = await volunteerInstance.post('/auth/apply', data);
             }
 
-            set({volunteer:response.data.volunteer});
-            set({voluteerToken:response.data.token});
-            await SecureStore.setItemAsync("volunteerToken",response.data.token);
+            if (response.data?.requiresOtp) {
+                set({
+                    pendingVolunteerOtpSession: {
+                        email: String(data?.email || '').trim().toLowerCase(),
+                        password: String(data?.password || ''),
+                    },
+                });
+                return response.data;
+            }
+
+            if (response.data?.token && response.data?.volunteer) {
+                set({volunteer:response.data.volunteer});
+                set({voluteerToken:response.data.token});
+                set({pendingVolunteerOtpSession:null});
+                await SecureStore.setItemAsync("volunteerToken",response.data.token);
+            }
+
             return response.data;
         } catch (error) {
             throw error.response?.data;
@@ -79,13 +94,119 @@ const useVolunteerBear = create((set, get)=>({
     loginVolunteer:async(data)=>{
         try {
             const response = await volunteerInstance.post('/auth/login',data);
-            set({volunteer:response.data.volunteer});
-            set({voluteerToken:response.data.token});
-            await SecureStore.setItemAsync("volunteerToken",response.data.token);
+
+            if (response.data?.requiresOtp) {
+                set({
+                    pendingVolunteerOtpSession: {
+                        email: String(data?.email || '').trim().toLowerCase(),
+                        password: String(data?.password || ''),
+                    },
+                });
+                return response.data;
+            }
+
+            if (response.data?.token && response.data?.volunteer) {
+                set({volunteer:response.data.volunteer});
+                set({voluteerToken:response.data.token});
+                set({pendingVolunteerOtpSession:null});
+                await SecureStore.setItemAsync("volunteerToken",response.data.token);
+            }
+
             return response.data;
         } catch (error) {
             throw error.response?.data;
         }
+    },
+    verifyVolunteerOtp: async({ email, otp })=>{
+        try {
+            const response = await volunteerInstance.post('/auth/verify-otp', {
+                email,
+                otp,
+            });
+
+            if (response.data?.token && response.data?.volunteer) {
+                set({
+                    volunteer: response.data.volunteer,
+                    voluteerToken: response.data.token,
+                    pendingVolunteerOtpSession: null,
+                });
+                await SecureStore.setItemAsync("volunteerToken",response.data.token);
+            }
+
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+    resendVolunteerOtp: async({ email, password })=>{
+        try {
+            const response = await volunteerInstance.post('/auth/resend-otp', {
+                email,
+                password,
+            });
+
+            if (response.data?.requiresOtp) {
+                set({
+                    pendingVolunteerOtpSession: {
+                        email: String(email || '').trim().toLowerCase(),
+                        password: String(password || ''),
+                    },
+                });
+            }
+
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+    sendVolunteerForgotPasswordOtp: async({ email })=>{
+        try {
+            const response = await volunteerInstance.post('/auth/forgot-password/send-otp', {
+                email,
+            });
+
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+    verifyVolunteerForgotPasswordOtp: async({ email, otp })=>{
+        try {
+            const response = await volunteerInstance.post('/auth/forgot-password/verify-otp', {
+                email,
+                otp,
+            });
+
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+    resetVolunteerForgotPassword: async({ email, newPassword, resetSessionToken })=>{
+        try {
+            const response = await volunteerInstance.post('/auth/forgot-password/reset', {
+                email,
+                newPassword,
+                resetSessionToken,
+            });
+
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+    setPendingVolunteerOtpSession: (data)=>{
+        set({
+            pendingVolunteerOtpSession: data
+                ? {
+                    email: String(data?.email || '').trim().toLowerCase(),
+                    password: String(data?.password || ''),
+                }
+                : null,
+        });
+    },
+    clearPendingVolunteerOtpSession: ()=>{
+        set({ pendingVolunteerOtpSession: null });
     },
     getVolunteer:async(showLoader = true)=>{
         try {
@@ -288,7 +409,7 @@ const useVolunteerBear = create((set, get)=>({
     logoutVolunteer:async()=>{
         try {
             await SecureStore.deleteItemAsync("volunteerToken");
-            set({volunteer:null, volunteerToken:null, volunteerAlerts:[], volunteerHistory:[]});
+            set({volunteer:null, voluteerToken:null, pendingVolunteerOtpSession:null, volunteerAlerts:[], volunteerHistory:[]});
         } catch (error) {
             throw error.response?.data;
         }
