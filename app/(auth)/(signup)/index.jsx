@@ -59,7 +59,7 @@ export default function Index() {
       if(res.success){
       }
     } catch (error) {
-      Alert.alert("Error ",error?.message || "Error while signing up");
+      Alert.alert("Error ",error?.message || "Error while Creating an account");
     } finally {
       setSigningUp(false)
     }
@@ -156,9 +156,13 @@ export default function Index() {
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
+                placeholder='Create password'
                 placeholderTextColor={colors.placeholder}
                 secureTextEntry={!showPass}
+                autoCapitalize='none'
+                autoCorrect={false}
+                autoComplete='new-password'
+                textContentType='newPassword'
                 className='flex-1 py-3 text-base font-medium'
                 style={{ color: colors.text }}
               />
@@ -178,9 +182,13 @@ export default function Index() {
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
+                placeholder='Confirm password'
                 placeholderTextColor={colors.placeholder}
                 secureTextEntry={!showConfirm}
+                autoCapitalize='none'
+                autoCorrect={false}
+                autoComplete='new-password'
+                textContentType='newPassword'
                 className='flex-1 py-3 text-base font-medium'
                 style={{ color: colors.text }}
               />

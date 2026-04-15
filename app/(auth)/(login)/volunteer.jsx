@@ -105,9 +105,13 @@ export default function Volunteer() {
                   <TextInput
                     value={password}
                     onChangeText={setPassword}
-                    placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
+                    placeholder='Enter password'
                     placeholderTextColor={colors.placeholder}
                     secureTextEntry={!showPass}
+                    autoCapitalize='none'
+                    autoCorrect={false}
+                    autoComplete='password'
+                    textContentType='password'
                     className='flex-1 py-3 text-base font-medium'
                     style={{ color: colors.text }}
                   />

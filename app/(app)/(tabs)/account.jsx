@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Alert, ScrollView, TextInput, StatusBar, Modal, useColorScheme, useWindowDimensions } from 'react-native'
+import { View, Text, TouchableOpacity, Alert, ScrollView, TextInput, StatusBar, Modal, ActivityIndicator, useColorScheme, useWindowDimensions } from 'react-native'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import * as Location from 'expo-location'
 import useUserBear from "../../../store/user.store"
@@ -251,7 +251,7 @@ export default function Account() {
         Alert.alert('Success', 'Volunteer profile updated successfully.')
       }
     } catch (error) {
-      Alert.alert('Error', error?.message || 'Unable to update volunteer profile')
+      Alert.alert('Error', error?.message || 'Unable to update your profile')
     } finally {
       setSavingVolunteerProfile(false)
     }
@@ -267,7 +267,7 @@ export default function Account() {
 
   const saveUserProfileHandler = async () => {
     if (user?.as_guest) {
-      Alert.alert('Complete Login First', 'Guest account ko pehle fully complete karo.')
+      Alert.alert('Complete Login First', 'Login Guest account to complete first.')
       return
     }
 
@@ -287,7 +287,7 @@ export default function Account() {
         Alert.alert('Success', 'Profile updated successfully.')
       }
     } catch (error) {
-      Alert.alert('Error', error?.message || 'Unable to update profile')
+      Alert.alert('Error', error?.message || 'Unable to update your profile')
     } finally {
       setSavingUserProfile(false)
     }
@@ -532,9 +532,17 @@ export default function Account() {
                   disabled={refreshingCurrentLocation}
                   onPress={fetchCurrentLocationPin}
                 >
-                  <Text className='font-black text-xs tracking-widest uppercase' style={{ color: inputTextColor }}>
-                    {refreshingCurrentLocation ? 'Fetching Location...' : 'Use Current Location'}
-                  </Text>
+                  <View className='flex-row items-center justify-center gap-2 px-2'>
+                    {refreshingCurrentLocation ? <ActivityIndicator size='small' color={inputTextColor} /> : null}
+                    <Text
+                      className='font-black text-xs tracking-widest uppercase'
+                      style={{ color: inputTextColor }}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {refreshingCurrentLocation ? 'Fetching...' : 'Use Current Location'}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -656,9 +664,17 @@ export default function Account() {
                 disabled={refreshingCurrentLocation}
                 onPress={fetchCurrentLocationPin}
               >
-                <Text className='font-black text-xs tracking-widest uppercase' style={{ color: inputTextColor }}>
-                  {refreshingCurrentLocation ? 'Fetching Location...' : 'Use Current Location'}
-                </Text>
+                <View className='flex-row items-center justify-center gap-2 px-2'>
+                  {refreshingCurrentLocation ? <ActivityIndicator size='small' color={inputTextColor} /> : null}
+                  <Text
+                    className='font-black text-xs tracking-widest uppercase'
+                    style={{ color: inputTextColor }}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {refreshingCurrentLocation ? 'Fetching...' : 'Use Current Location'}
+                  </Text>
+                </View>
               </TouchableOpacity>
 
               <TouchableOpacity

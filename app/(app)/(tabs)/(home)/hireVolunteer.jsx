@@ -5,6 +5,28 @@ import OpenStreetMapView from '../../../../components/common/OpenStreetMapView'
 import useUserBear from '../../../../store/user.store'
 import useThemeBear from '../../../../store/theme.store'
 
+const normalizePhoneForDialer = (phoneValue) => {
+  if (phoneValue === null || phoneValue === undefined) return ''
+
+  const rawValue = String(phoneValue).trim()
+  if (!rawValue) return ''
+
+  let decodedValue = rawValue
+  try {
+    decodedValue = decodeURIComponent(rawValue)
+  } catch {
+  }
+
+  const cleanedValue = decodedValue.replace(/[^\d+]/g, '')
+  if (!cleanedValue) return ''
+
+  if (cleanedValue.startsWith('+')) {
+    return `+${cleanedValue.slice(1).replace(/\+/g, '')}`
+  }
+
+  return cleanedValue.replace(/\+/g, '')
+}
+
 export default function HireVolunteer() {
   const routes = useRouter()
   const [completingWork, setCompletingWork] = useState(false)
@@ -36,11 +58,18 @@ export default function HireVolunteer() {
   const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude)
 
   const callVolunteerHandler = async () => {
-    if (!selectedVolunteer?.phone) return
-    const phoneUrl = `tel:${selectedVolunteer.phone}`
-    const canOpen = await Linking.canOpenURL(phoneUrl)
-    if (canOpen) {
-      Linking.openURL(phoneUrl)
+    const normalizedPhone = normalizePhoneForDialer(selectedVolunteer?.phone)
+    if (!normalizedPhone) {
+      Alert.alert('Phone unavailable', 'Volunteer phone number is not valid.')
+      return
+    }
+
+    const phoneUrl = `tel:${normalizedPhone}`
+
+    try {
+      await Linking.openURL(phoneUrl)
+    } catch {
+      Alert.alert('Call failed', 'Unable to open phone dialer right now.')
     }
   }
 

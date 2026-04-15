@@ -94,9 +94,9 @@ export default function UserHome({ user }) {
   const sendAlertHandler = async () => {
     if (hasTrackedAlert) {
       if (latestAlert?.mode === 'Alloted') {
-        Alert.alert('Current Alert Already Assigned', 'Volunteer assign ho chuka hai. Naya alert bhejne se pehle current alert cancel karo.')
+        Alert.alert('Alert Already Assigned', 'A volunteer has been assigned to your current alert. Please cancel the active alert before sending a new one.')
       } else {
-        Alert.alert('Current Alert Active', 'Track Alert me jaake Send Another Alert dabao. Wo pehle current active alert cancel karega.')
+        Alert.alert('Alert Already Active', 'Please track your current alert first. You must cancel the active alert before sending a new one.')
       }
       routes.push('/(app)/(tabs)/(home)/sendedAlert')
       return

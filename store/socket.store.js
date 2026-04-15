@@ -129,6 +129,7 @@ const attachVolunteerSocketListeners = (socket) => {
         const previousAlerts = useVolunteerBear.getState().volunteerAlerts || [];
 
         await useVolunteerBear.getState().getVolunteerNearbyAlerts(false).catch(() => {});
+        await useVolunteerBear.getState().getVolunteerAlertHistory(false).catch(() => {});
 
         const nextAlerts = useVolunteerBear.getState().volunteerAlerts || [];
         const freshAlerts = pickFreshNotifiableVolunteerAlerts({

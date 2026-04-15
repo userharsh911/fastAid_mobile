@@ -312,9 +312,13 @@ export default function Volunteer() {
                   <TextInput
                     value={password}
                     onChangeText={setPassword}
-                    placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
+                    placeholder='Create password'
                     placeholderTextColor={colors.placeholder}
                     secureTextEntry={!showPass}
+                    autoCapitalize='none'
+                    autoCorrect={false}
+                    autoComplete='new-password'
+                    textContentType='newPassword'
                     className='flex-1 py-3 text-base font-medium'
                     style={{ color: colors.text }}
                   />
@@ -334,9 +338,13 @@ export default function Volunteer() {
                   <TextInput
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
-                    placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'
+                    placeholder='Confirm password'
                     placeholderTextColor={colors.placeholder}
                     secureTextEntry={!showConfirm}
+                    autoCapitalize='none'
+                    autoCorrect={false}
+                    autoComplete='new-password'
+                    textContentType='newPassword'
                     className='flex-1 py-3 text-base font-medium'
                     style={{ color: colors.text }}
                   />
@@ -398,9 +406,17 @@ export default function Volunteer() {
                 disabled={refreshingCurrentLocation}
                 onPress={pickCurrentLocationForMap}
               >
-                <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.accent }}>
-                  {refreshingCurrentLocation ? 'Fetching Location...' : 'Use My Current Location'}
-                </Text>
+                <View className='flex-row items-center justify-center gap-2 px-2'>
+                  {refreshingCurrentLocation ? <ActivityIndicator size='small' color={colors.accent} /> : null}
+                  <Text
+                    className='font-black text-xs tracking-widest uppercase'
+                    style={{ color: colors.accent }}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {refreshingCurrentLocation ? 'Fetching...' : 'Use My Current Location'}
+                  </Text>
+                </View>
               </TouchableOpacity>
 
               {
@@ -511,9 +527,17 @@ export default function Volunteer() {
               disabled={refreshingCurrentLocation}
               onPress={pickCurrentLocationForMap}
             >
-              <Text className='font-black text-xs tracking-widest uppercase' style={{ color: colors.accent }}>
-                {refreshingCurrentLocation ? 'Fetching Location...' : 'Use My Current Location'}
-              </Text>
+                <View className='flex-row items-center justify-center gap-2 px-2'>
+                  {refreshingCurrentLocation ? <ActivityIndicator size='small' color={colors.accent} /> : null}
+                  <Text
+                    className='font-black text-xs tracking-widest uppercase'
+                    style={{ color: colors.accent }}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {refreshingCurrentLocation ? 'Fetching...' : 'Use My Current Location'}
+                  </Text>
+                </View>
             </TouchableOpacity>
 
             <TouchableOpacity

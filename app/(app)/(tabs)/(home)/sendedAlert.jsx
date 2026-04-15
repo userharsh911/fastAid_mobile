@@ -6,6 +6,28 @@ import useUserBear from '../../../../store/user.store'
 import VolunteerRadarSearch from '../../../../components/common/VolunteerRadarSearch'
 import useThemeBear from '../../../../store/theme.store'
 
+const normalizePhoneForDialer = (phoneValue) => {
+  if (phoneValue === null || phoneValue === undefined) return ''
+
+  const rawValue = String(phoneValue).trim()
+  if (!rawValue) return ''
+
+  let decodedValue = rawValue
+  try {
+    decodedValue = decodeURIComponent(rawValue)
+  } catch {
+  }
+
+  const cleanedValue = decodedValue.replace(/[^\d+]/g, '')
+  if (!cleanedValue) return ''
+
+  if (cleanedValue.startsWith('+')) {
+    return `+${cleanedValue.slice(1).replace(/\+/g, '')}`
+  }
+
+  return cleanedValue.replace(/\+/g, '')
+}
+
 export default function SendedAlert() {
   const routes = useRouter()
   const [sendingAnotherAlert, setSendingAnotherAlert] = useState(false)
@@ -170,11 +192,18 @@ export default function SendedAlert() {
   }
 
   const callVolunteerHandler = async (phone) => {
-    if (!phone) return
-    const phoneUrl = `tel:${phone}`
-    const canOpen = await Linking.canOpenURL(phoneUrl)
-    if (canOpen) {
-      Linking.openURL(phoneUrl)
+    const normalizedPhone = normalizePhoneForDialer(phone)
+    if (!normalizedPhone) {
+      Alert.alert('Phone unavailable', 'Volunteer phone number is not valid.')
+      return
+    }
+
+    const phoneUrl = `tel:${normalizedPhone}`
+
+    try {
+      await Linking.openURL(phoneUrl)
+    } catch {
+      Alert.alert('Call failed', 'Unable to open phone dialer right now.')
     }
   }
 
