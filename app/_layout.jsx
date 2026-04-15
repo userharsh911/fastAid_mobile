@@ -14,6 +14,20 @@ import SplashScreen from "../components/SplashScreen";
 import "../global.css";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
+const normalizeNotificationScreenPath = (screenPath) => {
+  if (typeof screenPath !== "string") return null;
+
+  const trimmedPath = screenPath.trim();
+  if (!trimmedPath) return null;
+
+  // Use concrete screen path to avoid route-group-only navigation edge cases.
+  if (trimmedPath === "/(app)/(tabs)/(home)") {
+    return "/(app)/(tabs)/(home)/index";
+  }
+
+  return trimmedPath;
+};
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -34,7 +48,9 @@ export default function RootLayout() {
   const rootNavigationState = useRootNavigationState();
   const systemColorScheme = useColorScheme();
   const lastAuthRedirectRef = useRef(null);
+  const lastHandledNotificationIdRef = useRef(null);
   const [showIntroSplash, setShowIntroSplash] = useState(() => !hasShownIntroSplashInSession);
+  const [notificationTargetRoute, setNotificationTargetRoute] = useState(null);
 
   const handleIntroSplashFinish = useCallback(() => {
     hasShownIntroSplashInSession = true;
@@ -174,30 +190,66 @@ export default function RootLayout() {
   }, [user?._id, latestAlert, latestAlert?._id, latestAlert?.mode, latestAlert?.createdAt]);
 
   useEffect(() => {
-    const navigateFromNotification = (response) => {
-      const screen = response?.notification?.request?.content?.data?.screen;
-      const alertId = response?.notification?.request?.content?.data?.alertId;
+    const queueNotificationNavigation = (response) => {
+      const notificationId = response?.notification?.request?.identifier;
 
-      if (typeof screen === "string" && rootNavigationState?.key) {
-        const targetRoute = alertId ? `${screen}?alertId=${alertId}` : screen;
-        routes.push(targetRoute);
+      if (
+        notificationId &&
+        notificationId === lastHandledNotificationIdRef.current
+      ) {
+        return;
       }
+
+      const rawScreenPath = response?.notification?.request?.content?.data?.screen;
+      const screenPath = normalizeNotificationScreenPath(rawScreenPath);
+
+      if (!screenPath) {
+        return;
+      }
+
+      const alertId = response?.notification?.request?.content?.data?.alertId;
+      const encodedAlertId =
+        alertId !== undefined && alertId !== null
+          ? encodeURIComponent(String(alertId))
+          : null;
+      const targetRoute = encodedAlertId
+        ? `${screenPath}?alertId=${encodedAlertId}`
+        : screenPath;
+
+      if (notificationId) {
+        lastHandledNotificationIdRef.current = notificationId;
+      }
+
+      setNotificationTargetRoute(targetRoute);
     };
 
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) {
-        navigateFromNotification(response);
+        queueNotificationNavigation(response);
       }
     });
 
     const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      navigateFromNotification(response);
+      queueNotificationNavigation(response);
     });
 
     return () => {
       responseSubscription.remove();
     };
-  }, [routes, rootNavigationState?.key]);
+  }, []);
+
+  useEffect(() => {
+    if (!rootNavigationState?.key || !isBootReady || !isAuthenticated) {
+      return;
+    }
+
+    if (!notificationTargetRoute) {
+      return;
+    }
+
+    routes.replace(notificationTargetRoute);
+    setNotificationTargetRoute(null);
+  }, [isAuthenticated, isBootReady, notificationTargetRoute, rootNavigationState?.key, routes]);
 
   useEffect(() => {
     if (!isBootReady) {

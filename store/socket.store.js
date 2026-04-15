@@ -72,7 +72,7 @@ const scheduleVolunteerLocalAlertNotification = async (alertItem) => {
                 body: buildVolunteerAlertBody(alertItem),
                 sound: "default",
                 data: {
-                    screen: "/(app)/(tabs)/(home)",
+                    screen: "/(app)/(tabs)/(home)/index",
                     alertId,
                 },
             },
